@@ -4,6 +4,7 @@ import { useApp } from './store/app'
 import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { Loader2 } from 'lucide-react'
+import { BrandMark } from './components/Brand'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Cars = lazy(() => import('./pages/Cars'))
@@ -25,7 +26,7 @@ function Splash({ msg }: { msg: string }) {
   return (
     <div className="min-h-screen grid place-items-center bg-bg">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-16 h-16 rounded-2xl bg-brand text-brandInk grid place-items-center text-2xl font-bold animate-pulseSoft">پ</div>
+        <BrandMark size={64} className="animate-pulseSoft" />
         <p className="text-muted text-sm flex items-center gap-2">
           <Loader2 size={15} className="animate-spin" /> {msg}
         </p>

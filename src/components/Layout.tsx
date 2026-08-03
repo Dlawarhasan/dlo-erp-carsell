@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useApp } from '../store/app'
 import { Toasts } from './ui'
+import { ShowroomMark } from './Brand'
 
 const NAV = [
   { to: '/', icon: LayoutDashboard, label: 'داشبۆرد', end: true },
@@ -46,11 +47,7 @@ export function Layout() {
       <aside className="hidden lg:flex flex-col w-64 shrink-0 border-s border-line bg-surface/60 backdrop-blur sticky top-0 h-screen no-print">
         <div className="p-5 border-b border-line">
           <div className="flex items-center gap-3">
-            {settings.logo ? (
-              <img src={settings.logo} className="w-10 h-10 rounded-xl object-cover border border-line" alt="" />
-            ) : (
-              <div className="w-10 h-10 rounded-xl bg-brand text-brandInk grid place-items-center font-bold text-lg">پ</div>
-            )}
+            <ShowroomMark logo={settings.logo} size={40} />
             <div className="min-w-0">
               <p className="font-bold truncate">{settings.showroomName}</p>
               <p className="text-[11px] text-muted flex items-center gap-1">
