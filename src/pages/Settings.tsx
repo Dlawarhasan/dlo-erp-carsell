@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { Save, Cloud, Download, Upload, Trash2, Plus, Building2, Percent, FileSignature, Database, Loader2, Image as ImgIcon, FlaskConical, Eraser } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Save, Cloud, Download, Upload, Trash2, Plus, Building2, Percent, FileSignature, Database, Loader2, Image as ImgIcon, FlaskConical, Eraser, HardDrive, Sparkles } from 'lucide-react'
 import { useApp, DEFAULT_SETTINGS } from '../store/app'
 import { PageHead } from '../components/Layout'
 import { Field, MoneyInput, Picker, Segmented, useConfirm } from '../components/ui'
@@ -9,7 +9,7 @@ import { getRepo, COLLECTIONS } from '../lib/repo'
 import { downloadFile } from '../lib/exportHtml'
 import { CITIES, DEFAULT_TERMS, DEFAULT_TERMS_AR } from '../lib/catalog'
 import { demoData } from '../lib/demo'
-import { num, todayISO } from '../lib/format'
+import { fmtBytes, num, todayISO } from '../lib/format'
 import type { Settings } from '../lib/types'
 
 function Card({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
@@ -115,6 +115,65 @@ export default function SettingsPage() {
         for (const r of rows as { id: string }[]) await repo.del(coll as any, r.id)
       }
       say('هەموو داتاکان سڕانەوە', 'info')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** ئامارەکانی وێنە — بۆ زانینی بۆشایی بەکارهاتوو */
+  const photoStats = useMemo(() => {
+    let count = 0
+    let full = 0
+    let bytes = 0
+    let soldFull = 0
+    let soldBytes = 0
+    for (const c of cars) {
+      for (const p of c.photos || []) {
+        count++
+        if (p.thumb) bytes += p.thumb.length * 0.75
+        const isFull = !!p.path || (p.url || '').startsWith('data:')
+        const sz = p.size || (p.url?.startsWith('data:') ? p.url.length * 0.75 : 250_000)
+        if (isFull) {
+          full++
+          bytes += sz
+          if (c.status === 'sold') {
+            soldFull++
+            soldBytes += sz
+          }
+        }
+      }
+    }
+    return { count, full, bytes, soldFull, soldBytes }
+  }, [cars])
+
+  /** سڕینەوەی وێنەی تەواوی ئۆتۆمبێلە فرۆشراوەکان — وێنە بچووکەکان دەمێننەوە */
+  const cleanSold = async () => {
+    if (!photoStats.soldFull) return say('هیچ شتێک بۆ پاککردنەوە نییە', 'info')
+    if (
+      !(await ask(
+        `وێنەی تەواوی ${photoStats.soldFull} وێنەی ئۆتۆمبێلی فرۆشراو دەسڕدرێتەوە و نزیکەی ${fmtBytes(photoStats.soldBytes)} ئازاد دەکات. وێنە بچووکەکان دەمێننەوە بۆ مێژوو. بەردەوامبم؟`,
+      ))
+    )
+      return
+    setBusy(true)
+    try {
+      const repo = await getRepo()
+      let n = 0
+      for (const c of cars) {
+        if (c.status !== 'sold') continue
+        const photos = c.photos || []
+        if (!photos.some((p) => p.path || (p.url || '').startsWith('data:'))) continue
+        const next = []
+        for (const p of photos) {
+          if (p.path) await repo.deleteImage(p.path)
+          if (p.path || (p.url || '').startsWith('data:')) {
+            n++
+            next.push({ id: p.id, thumb: p.thumb || '', cover: p.cover })
+          } else next.push(p)
+        }
+        await repo.put('cars', { ...c, photos: next } as never)
+      }
+      say(`${n} وێنە پاککرایەوە`)
     } finally {
       setBusy(false)
     }
@@ -275,6 +334,33 @@ export default function SettingsPage() {
               ئێستا: <span className="num">{cars.length}</span> ئۆتۆمبێل · <span className="num">{contracts.length}</span> عەقد ·{' '}
               <span className="num">{customers.length}</span> کریار · <span className="num">{txs.length}</span> جوڵەی پارە
             </p>
+
+            {/* بۆشایی */}
+            <div className="bg-surface2 border border-line rounded-xl p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 font-medium">
+                  <HardDrive size={15} className="text-brand" /> بۆشایی وێنەکان
+                </span>
+                <span className="num text-muted">
+                  {fmtBytes(photoStats.bytes)} / 1 GB
+                </span>
+              </div>
+              <div className="h-2 bg-bg rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${photoStats.bytes > 8e8 ? 'bg-bad' : photoStats.bytes > 6e8 ? 'bg-warn' : 'bg-ok'}`}
+                  style={{ width: `${Math.min(100, (photoStats.bytes / 1073741824) * 100)}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-muted leading-5">
+                <span className="num">{photoStats.count}</span> وێنە ·{' '}
+                نزیکەی <span className="num">{Math.max(0, Math.round((1073741824 - photoStats.bytes) / 260000))}</span> وێنەی تر جێگای هەیە
+              </p>
+              {photoStats.soldFull > 0 && can('settings.edit') && (
+                <button onClick={cleanSold} disabled={busy} className="btn-ghost w-full !py-2 !text-[13px]">
+                  <Sparkles size={15} /> ئازادکردنی <span className="num">{fmtBytes(photoStats.soldBytes)}</span> لە ئۆتۆمبێلە فرۆشراوەکان
+                </button>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-2.5 pt-1">
               <button onClick={loadDemo} disabled={busy} className="btn-ghost !text-[13px]">
                 <FlaskConical size={16} /> داتای نموونە

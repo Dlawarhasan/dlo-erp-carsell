@@ -79,7 +79,7 @@ export function PhotoUploader({ photos, onChange }: { photos: Photo[]; onChange:
       try {
         const { full, thumb } = await variants(f)
         const { url, path } = await repo.uploadImage(full, f.name.replace(/[^\w.]/g, '_'))
-        next.push({ id: uid('p'), thumb, url, path, cover: next.length === 0 })
+        next.push({ id: uid('p'), thumb, url, path, size: full.size, cover: next.length === 0 })
       } catch (e) {
         console.warn('upload failed', e)
         setErr('نەتوانرا وێنەیەک بارببرێت — دووبارە هەوڵبدە')

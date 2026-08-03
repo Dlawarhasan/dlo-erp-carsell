@@ -106,6 +106,13 @@ export function uid(prefix = '') {
   return prefix ? `${prefix}_${s}` : s
 }
 
+export function fmtBytes(b: number) {
+  if (!b || b < 1024) return `${Math.round(b || 0)} B`
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(0)} KB`
+  if (b < 1024 * 1024 * 1024) return `${(b / 1048576).toFixed(1)} MB`
+  return `${(b / 1073741824).toFixed(2)} GB`
+}
+
 export function normalizePhone(p: string) {
   return (p || '').replace(/[^\d+]/g, '')
 }

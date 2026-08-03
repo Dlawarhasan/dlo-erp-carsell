@@ -11,6 +11,8 @@ export interface Photo {
   url?: string
   /** شوێنی وێنەی تەواو: `photos/<id>` لە Firestore، یان ڕێڕەوی Storage */
   path?: string
+  /** قەبارەی وێنەی تەواو بە بایت */
+  size?: number
   cover?: boolean
 }
 
