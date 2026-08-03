@@ -3,6 +3,7 @@ import { getRepo, setPhotoStore, type SessionUser, type CollName } from '../lib/
 import type { AppUser, AuditEntry, Car, Contract, Customer, Partner, Settings, Tx, Role } from '../lib/types'
 import { DEFAULT_TERMS, DEFAULT_TERMS_AR } from '../lib/catalog'
 import { uid } from '../lib/format'
+import { fx } from '../lib/feedback'
 
 export type Cap =
   | 'car.edit'
@@ -122,6 +123,7 @@ export const useApp = create<AppState>((set, get) => ({
 
   say(msg, kind = 'ok') {
     const id = uid()
+    fx(kind === 'bad' ? 'bad' : kind === 'info' ? 'info' : 'ok')
     set({ toast: [...get().toast, { id, msg, kind }] })
     setTimeout(() => get().drop(id), 3200)
   },

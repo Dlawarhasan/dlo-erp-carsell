@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Save, Cloud, Download, Upload, Trash2, Plus, Building2, Percent, FileSignature, Database, Loader2, Image as ImgIcon, FlaskConical, Eraser, HardDrive, Sparkles } from 'lucide-react'
+import { Save, Cloud, Download, Upload, Trash2, Plus, Building2, Percent, FileSignature, Database, Loader2, Image as ImgIcon, FlaskConical, Eraser, HardDrive, Sparkles, Vibrate, Volume2 } from 'lucide-react'
 import { useApp, DEFAULT_SETTINGS } from '../store/app'
 import { PageHead } from '../components/Layout'
-import { Field, MoneyInput, Picker, Segmented, useConfirm } from '../components/ui'
+import { Field, MoneyInput, Picker, Segmented, Switch, useConfirm } from '../components/ui'
+import { fx, haptic, sound, getFx, setFx, onFxChange, type FxPrefs } from '../lib/feedback'
 import { FirebaseSetup } from '../components/FirebaseSetup'
 import { compress } from '../components/PhotoUploader'
 import { getRepo, COLLECTIONS } from '../lib/repo'
@@ -21,6 +22,65 @@ function Card({ icon, title, children }: { icon: React.ReactNode; title: string;
       </div>
       {children}
     </section>
+  )
+}
+
+/* ڕێکخستنی لەرزین و دەنگ — بۆ هەر ئامێرێک بە جیا خەزن دەکرێت */
+function FeedbackCard() {
+  const [p, setP] = useState<FxPrefs>(getFx)
+  useEffect(() => {
+    const off = onFxChange(setP)
+    return () => off()
+  }, [])
+
+  const tests: { k: Parameters<typeof fx>[0]; label: string }[] = [
+    { k: 'tap', label: 'دەستلێدان' },
+    { k: 'ok', label: 'سەرکەوتوو' },
+    { k: 'bad', label: 'هەڵە' },
+    { k: 'scan', label: 'سکانی VIN' },
+    { k: 'money', label: 'عەقد' },
+  ]
+
+  return (
+    <Card icon={<Vibrate size={17} />} title="لەرزین و دەنگ">
+      <div className="divide-y divide-line -my-1">
+        <Switch
+          checked={p.haptics}
+          onChange={(v) => {
+            setFx({ haptics: v })
+            if (v) haptic('toggle')
+          }}
+          label="لەرزین"
+          hint="لەرزینێکی کورت لە کاتی دەستلێدان و کردارەکان"
+          icon={<Vibrate size={17} />}
+        />
+        <Switch
+          checked={p.sound}
+          onChange={(v) => {
+            setFx({ sound: v })
+            if (v) sound('toggle')
+          }}
+          label="دەنگ"
+          hint="دەنگی نەرم بۆ کلیک، سەرکەوتن و هەڵە"
+          icon={<Volume2 size={17} />}
+        />
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-line">
+        <p className="text-xs text-muted mb-2.5">تاقیکردنەوە:</p>
+        <div className="flex flex-wrap gap-2">
+          {tests.map((t) => (
+            <button key={t.k} type="button" data-nofx onClick={() => fx(t.k)} className="btn-ghost !py-1.5 !px-3 text-[13px]">
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <p className="text-[11px] text-muted/80 mt-4 leading-5">
+        ئەم ڕێکخستنانە تەنها بۆ ئەم ئامێرەن. لەسەر ئایفۆن، ئەگەر سویچی بێدەنگی (Silent) کارا بێت، دەنگەکان نایەن.
+      </p>
+    </Card>
   )
 }
 
@@ -253,6 +313,9 @@ export default function SettingsPage() {
             </Field>
           </div>
         </Card>
+
+        {/* لەرزین و دەنگ */}
+        <FeedbackCard />
 
         {/* مەرجەکان */}
         <Card icon={<FileSignature size={17} />} title="مەرجەکانی عەقد">

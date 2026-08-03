@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { X, Zap, ZapOff, Keyboard, ScanLine, Camera, Loader2, RefreshCw } from 'lucide-react'
 import { cleanVin, VIN_RE } from '../lib/format'
+import { fx } from '../lib/feedback'
 import { Portal } from './Portal'
 
 type Mode = 'barcode' | 'ocr'
@@ -24,11 +25,7 @@ export function VinScanner({ onResult, onClose }: { onResult: (vin: string) => v
     if (!VIN_RE.test(v)) return false
     if (doneRef.current) return true
     doneRef.current = true
-    try {
-      navigator.vibrate?.(60)
-    } catch {
-      /* ignore */
-    }
+    fx('scan')
     stopAll()
     onResult(v)
     return true

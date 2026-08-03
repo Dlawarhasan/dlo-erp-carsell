@@ -292,6 +292,54 @@ export function Segmented<T extends string>({
   )
 }
 
+/* ---------------- Switch ---------------- */
+export function Switch({
+  checked,
+  onChange,
+  label,
+  hint,
+  icon,
+  disabled,
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  label: string
+  hint?: string
+  icon?: React.ReactNode
+  disabled?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      data-fx="toggle"
+      onClick={() => onChange(!checked)}
+      className="w-full flex items-center gap-3 text-start py-3 disabled:opacity-50"
+    >
+      {icon && (
+        <span className="w-9 h-9 rounded-xl bg-surface2 border border-line grid place-items-center text-muted shrink-0">{icon}</span>
+      )}
+      <span className="grow min-w-0">
+        <span className="block font-medium text-[14px]">{label}</span>
+        {hint && <span className="block text-xs text-muted mt-0.5 leading-5">{hint}</span>}
+      </span>
+      <span
+        className={`relative w-[48px] h-[29px] rounded-full transition-colors shrink-0 ${
+          checked ? 'bg-brand' : 'bg-surface2 border border-line'
+        }`}
+      >
+        <span
+          className={`absolute top-[3px] w-[23px] h-[23px] rounded-full bg-white shadow-sm transition-all duration-200 ${
+            checked ? 'start-[22px]' : 'start-[3px]'
+          }`}
+        />
+      </span>
+    </button>
+  )
+}
+
 /* ---------------- Stat card ---------------- */
 export function Stat({
   label,

@@ -7,6 +7,7 @@ import { Field, MoneyInput, Picker, Segmented, Empty } from '../components/ui'
 import { CITIES } from '../lib/catalog'
 import { addMonths, fmtDate, money, num, todayISO, uid } from '../lib/format'
 import { amountWordsKu } from '../lib/numwords'
+import { fx } from '../lib/feedback'
 import type { Contract, Currency, Customer, Installment } from '../lib/types'
 
 export default function Sell() {
@@ -142,6 +143,7 @@ export default function Sell() {
         })
       }
       await log('فرۆشتنی ئۆتۆمبێل', 'contracts', contract.id, `${no} — ${car.brand} ${car.model} بۆ ${cust.name}`)
+      fx('money')
       say('عەقدەکە دروستکرا')
       nav(`/contracts/${contract.id}`, { replace: true })
     } catch (e) {
