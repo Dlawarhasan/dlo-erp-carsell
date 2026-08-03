@@ -1,0 +1,205 @@
+@import '@fontsource/noto-kufi-arabic/400.css';
+@import '@fontsource/noto-kufi-arabic/500.css';
+@import '@fontsource/noto-kufi-arabic/700.css';
+@import '@fontsource/noto-naskh-arabic/400.css';
+@import '@fontsource/noto-naskh-arabic/700.css';
+
+.theme-dark {
+  --c-bg: 9 13 18;
+  --c-surface: 18 24 32;
+  --c-surface2: 26 34 45;
+  --c-line: 40 51 65;
+  --c-ink: 233 239 246;
+  --c-muted: 141 156 175;
+  --c-brand: 232 168 56;
+  --c-brand-ink: 26 18 4;
+  --c-ok: 52 199 123;
+  --c-warn: 240 176 60;
+  --c-bad: 244 96 90;
+  --c-info: 90 162 245;
+  color-scheme: dark;
+  }
+.theme-light {
+  --c-bg: 245 247 250;
+  --c-surface: 255 255 255;
+  --c-surface2: 240 244 249;
+  --c-line: 219 226 235;
+  --c-ink: 17 26 38;
+  --c-muted: 104 119 138;
+  --c-brand: 176 114 12;
+  --c-brand-ink: 255 251 242;
+  --c-ok: 22 152 90;
+  --c-warn: 190 128 15;
+  --c-bad: 205 52 46;
+  --c-info: 32 108 205;
+  color-scheme: light;
+  }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------
+   فۆنتی Speda — ئەگەر فایلی فۆنتەکەت هەیە، بیخە ناو public/fonts/
+   بە ناوەکانی: Speda.woff2 و Speda-Bold.woff2 (یان .ttf)
+   ئەوکاتە خۆکارانە بەکاردێت. ئەگەر نەبوو، Noto Kufi Arabic بەکاردێت.
+---------------------------------------------------------------- */
+@font-face {
+  font-family: 'Speda';
+  src: url('/fonts/Speda.woff2') format('woff2'), url('/fonts/Speda.ttf') format('truetype');
+  font-weight: 100 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Speda';
+  src: url('/fonts/Speda-Bold.woff2') format('woff2'), url('/fonts/Speda-Bold.ttf') format('truetype');
+  font-weight: 700 900;
+  font-display: swap;
+}
+
+@layer base {
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-bg text-ink font-sans antialiased;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+  }
+  /* ژمارەکان هەمیشە بە ئینگلیزی و ڕێکخراو */
+  .num {
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+  td.num,
+  th.num {
+    unicode-bidi: isolate;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-line rounded-full;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  input,
+  select,
+  textarea,
+  button {
+    font-family: inherit;
+  }
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface border border-line rounded-2xl shadow-card;
+  }
+  .field {
+    @apply w-full bg-surface2 border border-line rounded-xl px-3.5 py-2.5 text-[15px] text-ink
+           outline-none transition placeholder:text-muted/70
+           focus:border-brand/70 focus:ring-4 focus:ring-brand/15;
+  }
+  .field-sm {
+    @apply px-3 py-2 text-sm rounded-lg;
+  }
+  .label {
+    @apply block text-[13px] font-medium text-muted mb-1.5;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[15px] font-medium
+           transition active:scale-[.97] disabled:opacity-45 disabled:pointer-events-none select-none;
+  }
+  .btn-brand {
+    @apply btn bg-brand text-brandInk hover:brightness-110;
+  }
+  .btn-ghost {
+    @apply btn bg-surface2 text-ink border border-line hover:border-brand/50;
+  }
+  .btn-quiet {
+    @apply btn text-muted hover:text-ink hover:bg-surface2;
+  }
+  .btn-bad {
+    @apply btn bg-bad/15 text-bad border border-bad/30 hover:bg-bad/25;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border;
+  }
+  .tab {
+    @apply px-3.5 py-2 rounded-xl text-sm font-medium text-muted transition whitespace-nowrap;
+  }
+  .tab-on {
+    @apply bg-brand/15 text-brand;
+  }
+  .hide-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scroll {
+    scrollbar-width: none;
+  }
+  .safe-b {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ================= چاپکردن — عەقد ================= */
+@page {
+  size: A4;
+  margin: 10mm;
+}
+@media print {
+  html,
+  body,
+  #root {
+    background: #fff !important;
+    color: #000 !important;
+    height: auto !important;
+  }
+  .bg-bg,
+  .bg-surface,
+  .bg-surface2 {
+    background: #fff !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .print-area {
+    position: static !important;
+    overflow: visible !important;
+  }
+  .print-sheet {
+    box-shadow: none !important;
+    border: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    min-height: auto !important;
+    break-after: page;
+    page-break-after: always;
+  }
+  .print-sheet:last-child,
+  .print-sheet:only-child {
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+  .avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+.print-only {
+  display: none;
+}
