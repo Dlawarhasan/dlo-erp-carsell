@@ -191,6 +191,8 @@ export interface Settings {
   terms: string[]
   termsAr: string[]
   securityNote?: string
-  /** لەکوێ وێنەکان خەزن بکرێن — firestore (خۆڕایی) یان storage (پێویستی بە پلانی Blaze) */
-  photoStore?: 'firestore' | 'storage'
+  /** لەکوێ وێنەکان خەزن بکرێن */
+  photoStore?: 'firestore' | 'storage' | 'cloudinary'
+  cloudinaryName?: string
+  cloudinaryPreset?: string
 }

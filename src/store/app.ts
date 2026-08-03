@@ -106,7 +106,7 @@ export const useApp = create<AppState>((set, get) => ({
       repo.watch<Settings>('settings', (rows) => {
         const s = rows.find((r) => r.id === 'main')
         const merged = s ? { ...DEFAULT_SETTINGS, ...s } : DEFAULT_SETTINGS
-        setPhotoStore(merged.photoStore || 'firestore')
+        setPhotoStore(merged.photoStore || 'firestore', { cloudName: merged.cloudinaryName, preset: merged.cloudinaryPreset })
         set({ settings: merged })
       }),
     )

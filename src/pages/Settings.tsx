@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Save, Cloud, Download, Upload, Trash2, Plus, Building2, Percent, FileSignature, Database, Loader2, Image as ImgIcon, FlaskConical, Eraser } from 'lucide-react'
 import { useApp, DEFAULT_SETTINGS } from '../store/app'
 import { PageHead } from '../components/Layout'
@@ -33,12 +33,22 @@ export default function SettingsPage() {
   const [busy, setBusy] = useState(false)
   const logoInp = useRef<HTMLInputElement>(null)
   const importInp = useRef<HTMLInputElement>(null)
+  const dirty = useRef(false)
 
-  const set = <K extends keyof Settings>(k: K, v: Settings[K]) => setS((p) => ({ ...p, [k]: v }))
+  // هاوکاتکردن لەگەڵ داتابەیس تا ئەو کاتەی بەکارهێنەر دەستکاری نەکردووە
+  useEffect(() => {
+    if (!dirty.current) setS({ ...DEFAULT_SETTINGS, ...settings })
+  }, [settings])
+
+  const set = <K extends keyof Settings>(k: K, v: Settings[K]) => {
+    dirty.current = true
+    setS((p) => ({ ...p, [k]: v }))
+  }
 
   const submit = async () => {
     setBusy(true)
     await save('settings', { ...s, id: 'main' })
+    dirty.current = false
     say('ڕێکخستنەکان خەزنکران')
     setBusy(false)
   }
@@ -195,17 +205,54 @@ export default function SettingsPage() {
         {/* داتا */}
         <Card icon={<Database size={17} />} title="داتا و پەیوەندی">
           <div className="space-y-3">
-            <Field label="شوێنی خەزنکردنی وێنەکان" hint={s.photoStore === 'storage' ? 'Firebase Storage — پێویستی بە پلانی Blaze هەیە (کارتی بانکی)' : 'ناو خودی داتابەیس — لەسەر پلانی خۆڕایی کاردەکات، پێویستی بە Storage نییە'}>
+            <Field
+              label="شوێنی خەزنکردنی وێنەکان"
+              hint={
+                s.photoStore === 'storage'
+                  ? 'Firebase Storage — پێویستی بە پلانی Blaze هەیە (کارتی بانکی)'
+                  : s.photoStore === 'cloudinary'
+                    ? 'Cloudinary — ٢٥ گیگا خۆڕایی مانگانە، بێ کارتی بانکی'
+                    : 'ناو خودی داتابەیس — لەسەر پلانی خۆڕایی کاردەکات (~٣٠٠٠ وێنە)'
+              }
+            >
               <Segmented
                 value={s.photoStore || 'firestore'}
                 onChange={(v) => set('photoStore', v)}
                 options={[
-                  { v: 'firestore' as const, label: 'Firestore (خۆڕایی)' },
-                  { v: 'storage' as const, label: 'Storage (Blaze)' },
+                  { v: 'firestore' as const, label: 'Firestore' },
+                  { v: 'cloudinary' as const, label: 'Cloudinary' },
+                  { v: 'storage' as const, label: 'Storage' },
                 ]}
                 size="sm"
               />
             </Field>
+
+            {s.photoStore === 'cloudinary' && (
+              <div className="bg-surface2 border border-line rounded-xl p-3.5 space-y-3 animate-in">
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Field label="Cloud name">
+                    <input dir="ltr" value={s.cloudinaryName || ''} onChange={(e) => set('cloudinaryName', e.target.value.trim())} className="field field-sm text-start" placeholder="dxxxxxxx" disabled={!editable} />
+                  </Field>
+                  <Field label="Upload preset">
+                    <input dir="ltr" value={s.cloudinaryPreset || ''} onChange={(e) => set('cloudinaryPreset', e.target.value.trim())} className="field field-sm text-start" placeholder="dlo_unsigned" disabled={!editable} />
+                  </Field>
+                </div>
+                <details>
+                  <summary className="cursor-pointer text-[13px] font-medium text-brand">چۆن ئەم دووانە دەهێنم؟</summary>
+                  <ol className="text-xs text-muted leading-6 list-decimal ps-5 mt-2 space-y-1">
+                    <li>لە <span className="num text-ink">cloudinary.com</span> هەژمارێکی خۆڕایی دروست بکە (کارتی بانکی ناوێت).</li>
+                    <li>لە <b className="text-ink">Dashboard</b>، <span className="num text-ink">Cloud name</span> کۆپی بکە و لێرە دایبنێ.</li>
+                    <li>بڕۆ <b className="text-ink">Settings ⚙️ → Upload → Upload presets → Add upload preset</b>.</li>
+                    <li><b className="text-ink">Signing Mode</b> بکە <span className="num text-ink">Unsigned</span>، ناوێکی بدە (نموونە <span className="num text-ink">dlo_unsigned</span>) و <b className="text-ink">Save</b> بکە.</li>
+                    <li>ناوی preset ـەکە لێرە دایبنێ و <b className="text-ink">خەزنکردن</b> لێبدە.</li>
+                  </ol>
+                  <p className="text-xs text-warn mt-2 leading-6">
+                    تێبینی: وێنە بارکراوەکان بە لینکی گشتین (هەرکەس لینکەکەی هەبێت دەیبینێت) — بۆ وێنەی ئۆتۆمبێل کێشە نییە.
+                    سڕینەوەی وێنە دەبێت لە داشبۆردی Cloudinary بکرێت.
+                  </p>
+                </details>
+              </div>
+            )}
 
             <button onClick={() => setFb(true)} className="btn-ghost w-full justify-between">
               <span className="flex items-center gap-2">

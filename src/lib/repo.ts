@@ -15,13 +15,39 @@ export interface SessionUser {
 /* شێوازی خەزنکردنی وێنە:
    firestore = ناو خودی داتابەیس (پلانی خۆڕایی — Spark)
    storage   = Firebase Storage (پێویستی بە پلانی Blaze هەیە) */
-export type PhotoStore = 'firestore' | 'storage'
+export type PhotoStore = 'firestore' | 'storage' | 'cloudinary'
+const VALID: PhotoStore[] = ['firestore', 'storage', 'cloudinary']
 let _photoStore: PhotoStore = (localStorage.getItem('gm.photoStore') as PhotoStore) || 'firestore'
-export function setPhotoStore(m: PhotoStore) {
-  _photoStore = m === 'storage' ? 'storage' : 'firestore'
+let _cloudinary = { cloudName: localStorage.getItem('gm.cldName') || '', preset: localStorage.getItem('gm.cldPreset') || '' }
+
+export function setPhotoStore(m: PhotoStore, cld?: { cloudName?: string; preset?: string }) {
+  _photoStore = VALID.includes(m) ? m : 'firestore'
   localStorage.setItem('gm.photoStore', _photoStore)
+  if (cld) {
+    _cloudinary = { cloudName: cld.cloudName || '', preset: cld.preset || '' }
+    localStorage.setItem('gm.cldName', _cloudinary.cloudName)
+    localStorage.setItem('gm.cldPreset', _cloudinary.preset)
+  }
 }
 export const getPhotoStore = () => _photoStore
+export const getCloudinary = () => _cloudinary
+
+/** بارکردنی وێنە بۆ Cloudinary — بەبێ سێرڤەر (unsigned upload preset) */
+export async function cloudinaryUpload(blob: Blob, name: string): Promise<{ url: string; path: string }> {
+  const { cloudName, preset } = _cloudinary
+  if (!cloudName || !preset) throw new Error('Cloudinary نەڕێکخراوە')
+  const fd = new FormData()
+  fd.append('file', blob, name || 'photo.jpg')
+  fd.append('upload_preset', preset)
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body: fd })
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(`Cloudinary: ${res.status} ${t.slice(0, 160)}`)
+  }
+  const j = (await res.json()) as { secure_url?: string; public_id?: string }
+  if (!j.secure_url) throw new Error('Cloudinary: وەڵامی نەناسراو')
+  return { url: j.secure_url, path: `cloudinary:${j.public_id || ''}` }
+}
 
 export interface Repo {
   mode: 'cloud' | 'local'
@@ -107,7 +133,8 @@ function createLocalRepo(): Repo {
       await (db as any)[coll].delete(id)
       await emit(coll)
     },
-    async uploadImage(blob) {
+    async uploadImage(blob, name) {
+      if (_photoStore === 'cloudinary') return cloudinaryUpload(blob, name)
       return { url: await blobToDataUrl(blob) }
     },
     async loadImage(path) {
@@ -174,6 +201,7 @@ async function createCloudRepo(cfg: NonNullable<ReturnType<typeof getFbConfig>>)
       await fs.deleteDoc(fs.doc(dbf, coll, id))
     },
     async uploadImage(blob, name) {
+      if (_photoStore === 'cloudinary') return cloudinaryUpload(blob, name)
       if (_photoStore === 'firestore') {
         // وێنەکە وەک دۆکیومێنتێک لە Firestore — بێ پێویست بە Storage
         const data = await blobToDataUrl(blob)
@@ -189,6 +217,7 @@ async function createCloudRepo(cfg: NonNullable<ReturnType<typeof getFbConfig>>)
     },
     async loadImage(path) {
       if (!path) return ''
+      if (path.startsWith('cloudinary:')) return ''
       if (path.startsWith('photos/')) {
         const snap = await fs.getDoc(fs.doc(dbf, path))
         return (snap.data() as { data?: string } | undefined)?.data || ''
@@ -197,6 +226,7 @@ async function createCloudRepo(cfg: NonNullable<ReturnType<typeof getFbConfig>>)
     },
     async deleteImage(path) {
       if (!path) return
+      if (path.startsWith('cloudinary:')) return // سڕینەوە لە Cloudinary پێویستی بە کلیلی نهێنی هەیە
       if (path.startsWith('photos/')) await fs.deleteDoc(fs.doc(dbf, path)).catch(() => {})
       else await st.deleteObject(st.ref(storage, path)).catch(() => {})
     },
