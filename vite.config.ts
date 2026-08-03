@@ -14,8 +14,8 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
       },
       manifest: {
-        name: 'سیستەمی پێشانگای ئۆتۆمبێل',
-        short_name: 'پێشانگا',
+        name: 'DLO ERP — پێشانگای ئۆتۆمبێل',
+        short_name: 'DLO ERP',
         description: 'بەڕێوەبردنی تەواوی پێشانگای ئۆتۆمبێل — حسابات، عەقد، ئۆتۆمبێل',
         lang: 'ckb',
         dir: 'rtl',

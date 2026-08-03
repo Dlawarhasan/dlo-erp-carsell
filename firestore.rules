@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn()  { return request.auth != null; }
+    function profile()   { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function role()      { return signedIn() ? profile().role : 'none'; }
+    function active()    { return signedIn() && profile().active == true; }
+    function isBoss()    { return active() && role() in ['owner','manager']; }
+    function canWrite()  { return active() && role() in ['owner','manager','seller','accountant']; }
+
+    // یەکەم بەکارهێنەر خۆی تۆمار دەکات، دواتر تەنها خاوەن/بەڕێوەبەر دەیگۆڕێت
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow update, delete: if isBoss();
+    }
+
+    match /cars/{id}      { allow read: if active(); allow write: if canWrite(); }
+    match /customers/{id} { allow read: if active(); allow write: if canWrite(); }
+    match /contracts/{id} { allow read: if active(); allow create, update: if canWrite(); allow delete: if isBoss(); }
+    match /txs/{id}       { allow read: if active(); allow create, update: if canWrite(); allow delete: if isBoss(); }
+    match /partners/{id}  { allow read: if active(); allow write: if isBoss(); }
+    match /settings/{id}  { allow read: if active(); allow write: if isBoss(); }
+    match /audit/{id}     { allow read: if isBoss(); allow create: if active(); allow update, delete: if false; }
+  }
+}
