@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Save, Cloud, Download, Upload, Trash2, Plus, Building2, Percent, FileSignature, Database, Loader2, Image as ImgIcon, FlaskConical, Eraser } from 'lucide-react'
 import { useApp, DEFAULT_SETTINGS } from '../store/app'
 import { PageHead } from '../components/Layout'
-import { Field, MoneyInput, Picker, useConfirm } from '../components/ui'
+import { Field, MoneyInput, Picker, Segmented, useConfirm } from '../components/ui'
 import { FirebaseSetup } from '../components/FirebaseSetup'
 import { compress } from '../components/PhotoUploader'
 import { getRepo, COLLECTIONS } from '../lib/repo'
@@ -195,6 +195,18 @@ export default function SettingsPage() {
         {/* داتا */}
         <Card icon={<Database size={17} />} title="داتا و پەیوەندی">
           <div className="space-y-3">
+            <Field label="شوێنی خەزنکردنی وێنەکان" hint={s.photoStore === 'storage' ? 'Firebase Storage — پێویستی بە پلانی Blaze هەیە (کارتی بانکی)' : 'ناو خودی داتابەیس — لەسەر پلانی خۆڕایی کاردەکات، پێویستی بە Storage نییە'}>
+              <Segmented
+                value={s.photoStore || 'firestore'}
+                onChange={(v) => set('photoStore', v)}
+                options={[
+                  { v: 'firestore' as const, label: 'Firestore (خۆڕایی)' },
+                  { v: 'storage' as const, label: 'Storage (Blaze)' },
+                ]}
+                size="sm"
+              />
+            </Field>
+
             <button onClick={() => setFb(true)} className="btn-ghost w-full justify-between">
               <span className="flex items-center gap-2">
                 <Cloud size={17} /> پەیوەندی Firebase

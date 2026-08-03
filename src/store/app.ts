@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { getRepo, type SessionUser, type CollName } from '../lib/repo'
+import { getRepo, setPhotoStore, type SessionUser, type CollName } from '../lib/repo'
 import type { AppUser, AuditEntry, Car, Contract, Customer, Partner, Settings, Tx, Role } from '../lib/types'
 import { DEFAULT_TERMS, DEFAULT_TERMS_AR } from '../lib/catalog'
 import { uid } from '../lib/format'
@@ -36,6 +36,7 @@ export const DEFAULT_SETTINGS: Settings = {
   contractCounter: 1,
   terms: DEFAULT_TERMS,
   termsAr: DEFAULT_TERMS_AR,
+  photoStore: 'firestore',
 }
 
 interface AppState {
@@ -104,7 +105,9 @@ export const useApp = create<AppState>((set, get) => ({
     unsubs.push(
       repo.watch<Settings>('settings', (rows) => {
         const s = rows.find((r) => r.id === 'main')
-        set({ settings: s ? { ...DEFAULT_SETTINGS, ...s } : DEFAULT_SETTINGS })
+        const merged = s ? { ...DEFAULT_SETTINGS, ...s } : DEFAULT_SETTINGS
+        setPhotoStore(merged.photoStore || 'firestore')
+        set({ settings: merged })
       }),
     )
     set({ ready: true })

@@ -12,13 +12,26 @@ export interface SessionUser {
   role: Role
 }
 
+/* شێوازی خەزنکردنی وێنە:
+   firestore = ناو خودی داتابەیس (پلانی خۆڕایی — Spark)
+   storage   = Firebase Storage (پێویستی بە پلانی Blaze هەیە) */
+export type PhotoStore = 'firestore' | 'storage'
+let _photoStore: PhotoStore = (localStorage.getItem('gm.photoStore') as PhotoStore) || 'firestore'
+export function setPhotoStore(m: PhotoStore) {
+  _photoStore = m === 'storage' ? 'storage' : 'firestore'
+  localStorage.setItem('gm.photoStore', _photoStore)
+}
+export const getPhotoStore = () => _photoStore
+
 export interface Repo {
   mode: 'cloud' | 'local'
   watch<T>(coll: CollName, cb: (rows: T[]) => void): () => void
   put(coll: CollName, obj: Record<string, unknown> & { id: string }): Promise<void>
   putMany(coll: CollName, objs: (Record<string, unknown> & { id: string })[]): Promise<void>
   del(coll: CollName, id: string): Promise<void>
-  uploadImage(blob: Blob, name: string): Promise<{ url: string; path?: string }>
+  uploadImage(blob: Blob, name: string): Promise<{ url?: string; path?: string }>
+  /** هێنانەوەی وێنەی تەواو بەپێی path */
+  loadImage(path: string): Promise<string>
   deleteImage(path?: string): Promise<void>
   signIn(email: string, password: string): Promise<void>
   signOut(): Promise<void>
@@ -97,6 +110,9 @@ function createLocalRepo(): Repo {
     async uploadImage(blob) {
       return { url: await blobToDataUrl(blob) }
     },
+    async loadImage(path) {
+      return path || ''
+    },
     async deleteImage() {
       /* noop */
     },
@@ -158,14 +174,31 @@ async function createCloudRepo(cfg: NonNullable<ReturnType<typeof getFbConfig>>)
       await fs.deleteDoc(fs.doc(dbf, coll, id))
     },
     async uploadImage(blob, name) {
+      if (_photoStore === 'firestore') {
+        // وێنەکە وەک دۆکیومێنتێک لە Firestore — بێ پێویست بە Storage
+        const data = await blobToDataUrl(blob)
+        if (data.length > 950_000) throw new Error('وێنەکە زۆر گەورەیە')
+        const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+        await fs.setDoc(fs.doc(dbf, 'photos', id), { data, at: Date.now() })
+        return { path: `photos/${id}` }
+      }
       const path = `cars/${Date.now()}_${name}`
       const r = st.ref(storage, path)
       await st.uploadBytes(r, blob, { contentType: blob.type || 'image/jpeg' })
       return { url: await st.getDownloadURL(r), path }
     },
+    async loadImage(path) {
+      if (!path) return ''
+      if (path.startsWith('photos/')) {
+        const snap = await fs.getDoc(fs.doc(dbf, path))
+        return (snap.data() as { data?: string } | undefined)?.data || ''
+      }
+      return await st.getDownloadURL(st.ref(storage, path)).catch(() => '')
+    },
     async deleteImage(path) {
       if (!path) return
-      await st.deleteObject(st.ref(storage, path)).catch(() => {})
+      if (path.startsWith('photos/')) await fs.deleteDoc(fs.doc(dbf, path)).catch(() => {})
+      else await st.deleteObject(st.ref(storage, path)).catch(() => {})
     },
     async signIn(email, password) {
       await auth.signInWithEmailAndPassword(a, email.trim(), password)

@@ -7,6 +7,7 @@ import { Stat } from '../components/ui'
 import { balances, carMoney, openInstallments, profitInRange } from '../lib/finance'
 import { fmtDateShort, money, num, todayISO } from '../lib/format'
 import { CAR_STATUS } from '../lib/catalog'
+import { thumbOf } from '../components/Img'
 
 const firstOfMonth = () => todayISO().slice(0, 8) + '01'
 
@@ -126,7 +127,7 @@ export default function Dashboard() {
                 return (
                   <button key={c.id} onClick={() => nav(`/cars/${c.id}`)} className="card overflow-hidden w-44 shrink-0 text-start hover:border-brand/50">
                     <div className="aspect-[16/10] bg-surface2">
-                      {cover ? <img src={cover.url} alt="" className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full grid place-items-center text-muted/40"><Car size={24} /></div>}
+                      {cover ? <img src={thumbOf(cover)} alt="" className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full grid place-items-center text-muted/40"><Car size={24} /></div>}
                     </div>
                     <div className="p-2.5">
                       <p className="text-[13px] font-medium truncate">

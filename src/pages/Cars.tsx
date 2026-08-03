@@ -5,6 +5,7 @@ import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
 import { SearchBar, Empty, Picker, Segmented, Sheet } from '../components/ui'
 import { BodySummary } from '../components/DamageMap'
+import { thumbOf } from '../components/Img'
 import { CAR_STATUS, COLORS, BRAND_LIST } from '../lib/catalog'
 import { fold, maskVin, money, num } from '../lib/format'
 import type { Car } from '../lib/types'
@@ -17,7 +18,7 @@ export function CarCard({ car, onClick }: { car: Car; onClick: () => void }) {
     <button onClick={onClick} className="card overflow-hidden text-start hover:border-brand/50 transition group">
       <div className="aspect-[16/10] bg-surface2 relative overflow-hidden">
         {cover ? (
-          <img src={cover.url} alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-[1.04] transition duration-500" />
+          <img src={thumbOf(cover)} alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-[1.04] transition duration-500" />
         ) : (
           <div className="w-full h-full grid place-items-center text-muted/50">
             <ImgIcon size={30} />

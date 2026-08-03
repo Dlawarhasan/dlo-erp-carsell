@@ -5,8 +5,12 @@ export type PartState = 'original' | 'painted' | 'putty' | 'replaced' | 'dented'
 
 export interface Photo {
   id: string
-  url: string
-  path?: string // Firebase Storage path (بۆ سڕینەوە)
+  /** وێنەی بچووک (data URL) — هەمیشە لەگەڵ ئۆتۆمبێلەکە خەزن دەکرێت، بۆ لیستەکان */
+  thumb?: string
+  /** وێنەی تەواو — data URL (ناوخۆیی) یان لینکی Storage */
+  url?: string
+  /** شوێنی وێنەی تەواو: `photos/<id>` لە Firestore، یان ڕێڕەوی Storage */
+  path?: string
   cover?: boolean
 }
 
@@ -187,4 +191,6 @@ export interface Settings {
   terms: string[]
   termsAr: string[]
   securityNote?: string
+  /** لەکوێ وێنەکان خەزن بکرێن — firestore (خۆڕایی) یان storage (پێویستی بە پلانی Blaze) */
+  photoStore?: 'firestore' | 'storage'
 }

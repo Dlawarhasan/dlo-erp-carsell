@@ -8,6 +8,7 @@ import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
 import { Sheet, Field, MoneyInput, Segmented, useConfirm, Empty, Picker } from '../components/ui'
 import { DamageMap } from '../components/DamageMap'
+import { Img, thumbOf } from '../components/Img'
 import { CAR_STATUS, COLORS, TX_CATEGORY_KU } from '../lib/catalog'
 import { fmtDate, maskVin, money, num, todayISO, uid } from '../lib/format'
 import { carMoney } from '../lib/finance'
@@ -115,13 +116,13 @@ ${settings.showroomName} ${settings.phone ? '— ' + settings.phone : ''}`
         {photos.length > 0 ? (
           <div className="grid grid-cols-4 gap-2 rounded-2xl overflow-hidden">
             <button onClick={() => setGallery(0)} className={`${photos.length > 1 ? 'col-span-3' : 'col-span-4'} aspect-[16/10] bg-surface2`}>
-              <img src={(photos.find((p) => p.cover) || photos[0]).url} alt="" className="w-full h-full object-cover" />
+              <img src={thumbOf(photos.find((p) => p.cover) || photos[0])} alt="" className="w-full h-full object-cover" />
             </button>
             {photos.length > 1 && (
               <div className="flex flex-col gap-2">
                 {photos.slice(0, 3).map((p, i) => (
                   <button key={p.id} onClick={() => setGallery(i)} className="grow bg-surface2 relative overflow-hidden rounded-lg">
-                    <img src={p.url} alt="" className="w-full h-full object-cover" />
+                    <img src={thumbOf(p)} alt="" className="w-full h-full object-cover" />
                     {i === 2 && photos.length > 3 && (
                       <span className="absolute inset-0 bg-black/60 grid place-items-center text-white font-bold num">+{photos.length - 3}</span>
                     )}
@@ -292,12 +293,12 @@ ${settings.showroomName} ${settings.phone ? '— ' + settings.phone : ''}`
             </button>
           </div>
           <div className="grow grid place-items-center p-4 overflow-hidden">
-            <img src={photos[gallery].url} alt="" className="max-h-full max-w-full object-contain rounded-xl" />
+            <Img photo={photos[gallery]} full fit="contain" className="w-full h-full rounded-xl" />
           </div>
           <div className="flex gap-2 overflow-x-auto p-4 hide-scroll">
             {photos.map((p, i) => (
               <button key={p.id} onClick={() => setGallery(i)} className={`w-20 h-14 shrink-0 rounded-lg overflow-hidden border-2 ${i === gallery ? 'border-brand' : 'border-transparent opacity-60'}`}>
-                <img src={p.url} alt="" className="w-full h-full object-cover" />
+                <img src={thumbOf(p)} alt="" className="w-full h-full object-cover" />
               </button>
             ))}
           </div>

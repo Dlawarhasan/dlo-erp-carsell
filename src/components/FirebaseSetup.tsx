@@ -27,6 +27,7 @@ service cloud.firestore {
     match /txs/{id}       { allow read: if active(); allow create, update: if canWrite(); allow delete: if isBoss(); }
     match /partners/{id}  { allow read: if active(); allow write: if isBoss(); }
     match /settings/{id}  { allow read: if active(); allow write: if isBoss(); }
+    match /photos/{id}    { allow read: if active(); allow write: if canWrite(); }
     match /audit/{id}     { allow read: if isBoss(); allow create: if active(); allow update, delete: if false; }
   }
 }`
@@ -112,7 +113,7 @@ export function FirebaseSetup({ open, onClose }: { open: boolean; onClose: () =>
             لە <b className="text-ink">Build → Firestore Database</b>، داتابەیسێک دروست بکە (Production mode).
           </li>
           <li>
-            لە <b className="text-ink">Build → Storage</b>، خەزنگە چالاک بکە (بۆ وێنەکان).
+            <b className="text-ink">Storage پێویست نییە</b> — وێنەکان لە خودی Firestore خەزن دەکرێن. (ئەگەر پلانی Blaze ت هەیە، لە ڕێکخستن دەتوانیت بیگۆڕیت بۆ Storage.)
           </li>
           <li>
             لە <b className="text-ink">Project settings → Your apps → Web</b>، ئەپێک زیاد بکە و کۆدی <span className="num text-ink">firebaseConfig</span> کۆپی بکە و لێرە دایبنێ.
@@ -146,7 +147,7 @@ export function FirebaseSetup({ open, onClose }: { open: boolean; onClose: () =>
               {copied === 'fs' ? <Check size={14} className="text-ok" /> : <Copy size={14} />}
             </button>
           </div>
-          <p className="text-xs text-muted mt-4 mb-2">ئەمەش لە Storage → Rules:</p>
+          <p className="text-xs text-muted mt-4 mb-2">ئەمەش لە Storage → Rules (تەنها ئەگەر Storage بەکاردەهێنیت):</p>
           <div className="relative">
             <pre dir="ltr" className="bg-surface2 border border-line rounded-xl p-3 text-[11px] overflow-x-auto leading-5">
               {STORAGE_RULES}
