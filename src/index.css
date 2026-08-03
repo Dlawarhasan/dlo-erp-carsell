@@ -59,15 +59,37 @@
 
 @layer base {
 
-  html,
-  body,
-  #root {
+  /* ---- شێڵی ئەپ: هیچ شتێک ناجووڵێت جگە لە ناوەڕۆک ---- */
+  html {
     height: 100%;
   }
   body {
     @apply bg-bg text-ink font-sans antialiased;
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
     -webkit-tap-highlight-color: transparent;
-    overscroll-behavior-y: none;
+    -webkit-font-smoothing: antialiased;
+  }
+  #root {
+    height: 100dvh;
+    overflow: hidden;
+  }
+  /* ناوچەی سکرۆڵ — نەرم و بێ لەرزین */
+  .app-scroll {
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  button,
+  a,
+  [role='button'],
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
   }
   /* ژمارەکان هەمیشە بە ئینگلیزی و ڕێکخراو */
   .num {
@@ -107,7 +129,7 @@
     @apply bg-surface border border-line rounded-2xl shadow-card;
   }
   .field {
-    @apply w-full bg-surface2 border border-line rounded-xl px-3.5 py-2.5 text-[15px] text-ink
+    @apply w-full bg-surface2 border border-line rounded-xl px-3.5 py-2.5 text-[16px] sm:text-[15px] text-ink
            outline-none transition placeholder:text-muted/70
            focus:border-brand/70 focus:ring-4 focus:ring-brand/15;
   }
@@ -161,10 +183,17 @@
 @media print {
   html,
   body,
-  #root {
+  #root,
+  #root > div,
+  .app-shell,
+  main,
+  .app-scroll {
     background: #fff !important;
     color: #000 !important;
     height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
   }
   .bg-bg,
   .bg-surface,

@@ -42,9 +42,9 @@ export function Layout() {
   const restItems = items.filter((n) => !MOBILE_MAIN.includes(n.to))
 
   return (
-    <div className="min-h-full flex bg-bg">
+    <div className="app-shell h-[100dvh] flex bg-bg overflow-hidden">
       {/* ============ لای دەسک‌تۆپ ============ */}
-      <aside className="hidden lg:flex flex-col w-64 shrink-0 border-s border-line bg-surface/60 backdrop-blur sticky top-0 h-screen no-print">
+      <aside className="hidden lg:flex flex-col w-64 shrink-0 border-s border-line bg-surface/60 backdrop-blur h-full no-print">
         <div className="p-5 border-b border-line">
           <div className="flex items-center gap-3">
             <ShowroomMark logo={settings.logo} size={40} />
@@ -95,7 +95,7 @@ export function Layout() {
       </aside>
 
       {/* ============ ناوەڕۆک ============ */}
-      <main className="grow min-w-0 pb-24 lg:pb-0">
+      <main className="grow min-w-0 h-full app-scroll pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0">
         <Outlet />
       </main>
 

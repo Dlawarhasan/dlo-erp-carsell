@@ -42,7 +42,7 @@ export function Sheet({
             <X size={20} />
           </button>
         </div>
-        <div className="overflow-y-auto px-5 py-4 grow">{children}</div>
+        <div className="app-scroll px-5 py-4 grow">{children}</div>
         {footer && <div className="px-5 py-3.5 border-t border-line shrink-0 flex gap-2 justify-end safe-b">{footer}</div>}
       </div>
     </div>
@@ -117,6 +117,17 @@ export function Field({
 }
 
 /* ---------------- Searchable Select ---------------- */
+function useIsDesktop() {
+  const [d, setD] = useState(() => (typeof window === 'undefined' ? true : window.matchMedia('(min-width: 640px)').matches))
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 640px)')
+    const h = () => setD(mq.matches)
+    mq.addEventListener('change', h)
+    return () => mq.removeEventListener('change', h)
+  }, [])
+  return d
+}
+
 export function Picker({
   value,
   onChange,
@@ -137,14 +148,69 @@ export function Picker({
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const box = useRef<HTMLDivElement>(null)
+  const desktop = useIsDesktop()
+
   useEffect(() => {
+    if (!desktop || !open) return
     const h = (e: MouseEvent) => {
       if (box.current && !box.current.contains(e.target as Node)) setOpen(false)
     }
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
-  }, [])
+  }, [desktop, open])
+
+  useEffect(() => {
+    if (!open) return
+    const k = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('keydown', k)
+    return () => document.removeEventListener('keydown', k)
+  }, [open])
+
   const filtered = options.filter((o) => o.toLowerCase().includes(q.toLowerCase()))
+
+  const pick = (o: string) => {
+    onChange(o)
+    setOpen(false)
+    setQ('')
+  }
+
+  const list = (
+    <>
+      {filtered.map((o) => (
+        <button
+          key={o}
+          type="button"
+          onClick={() => pick(o)}
+          className={`w-full text-start px-4 py-3 sm:py-2.5 text-[15px] hover:bg-surface2 active:bg-surface2 flex items-center justify-between gap-2 ${
+            value === o ? 'text-brand font-medium' : ''
+          }`}
+        >
+          {renderOption ? renderOption(o) : o || <span className="text-muted">— هیچ —</span>}
+          {value === o && <Check size={17} className="text-brand shrink-0" />}
+        </button>
+      ))}
+      {allowCustom && q && !filtered.includes(q) && (
+        <button type="button" onClick={() => pick(q)} className="w-full text-start px-4 py-3 text-[15px] text-brand hover:bg-surface2">
+          زیادکردنی «{q}»
+        </button>
+      )}
+      {!filtered.length && !allowCustom && <p className="px-4 py-6 text-sm text-muted text-center">هیچ نەدۆزرایەوە</p>}
+    </>
+  )
+
+  const search = (autoFocus: boolean) => (
+    <div className="relative">
+      <Search size={16} className="absolute top-1/2 -translate-y-1/2 start-3 text-muted" />
+      <input
+        autoFocus={autoFocus}
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="بگەڕێ..."
+        className="field ps-9"
+      />
+    </div>
+  )
+
   return (
     <div className="relative" ref={box}>
       <button
@@ -156,51 +222,34 @@ export function Picker({
         }}
         className={`field flex items-center justify-between text-start ${disabled ? 'opacity-50' : ''}`}
       >
-        <span className={value ? '' : 'text-muted/70'}>{value || placeholder}</span>
-        <ChevronDown size={17} className={`text-muted transition ${open ? 'rotate-180' : ''}`} />
+        <span className={value ? 'truncate' : 'text-muted/70 truncate'}>{value || placeholder}</span>
+        <ChevronDown size={17} className={`text-muted transition shrink-0 ${open ? 'rotate-180' : ''}`} />
       </button>
-      {open && (
+
+      {/* ---- دەسک‌تۆپ: لیستی داکەوتوو ---- */}
+      {open && desktop && (
         <div className="absolute z-40 mt-1.5 w-full bg-surface border border-line rounded-xl shadow-pop overflow-hidden animate-in">
-          <div className="p-2 border-b border-line">
-            <div className="relative">
-              <Search size={15} className="absolute top-1/2 -translate-y-1/2 start-2.5 text-muted" />
-              <input
-                autoFocus
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="بگەڕێ..."
-                className="field field-sm ps-8"
-              />
+          <div className="p-2 border-b border-line">{search(true)}</div>
+          <div className="max-h-64 app-scroll">{list}</div>
+        </div>
+      )}
+
+      {/* ---- مۆبایل: شیتی خوارەوە ---- */}
+      {open && !desktop && (
+        <div className="fixed inset-0 z-[70] flex items-end no-print">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] animate-in" onClick={() => setOpen(false)} />
+          <div className="relative w-full bg-surface border-t border-line rounded-t-3xl shadow-pop animate-sheet flex flex-col max-h-[80dvh]">
+            <div className="shrink-0 px-4 pt-3 pb-3 border-b border-line">
+              <div className="w-10 h-1 rounded-full bg-line mx-auto mb-3" />
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <p className="font-bold text-[15px] truncate">{placeholder}</p>
+                <button type="button" onClick={() => setOpen(false)} className="p-2 -m-2 text-muted">
+                  <X size={20} />
+                </button>
+              </div>
+              {search(false)}
             </div>
-          </div>
-          <div className="max-h-60 overflow-y-auto">
-            {filtered.map((o) => (
-              <button
-                key={o}
-                type="button"
-                onClick={() => {
-                  onChange(o)
-                  setOpen(false)
-                }}
-                className="w-full text-start px-3.5 py-2.5 text-[15px] hover:bg-surface2 flex items-center justify-between gap-2"
-              >
-                {renderOption ? renderOption(o) : o}
-                {value === o && <Check size={16} className="text-brand" />}
-              </button>
-            ))}
-            {allowCustom && q && !filtered.includes(q) && (
-              <button
-                type="button"
-                onClick={() => {
-                  onChange(q)
-                  setOpen(false)
-                }}
-                className="w-full text-start px-3.5 py-2.5 text-[15px] text-brand hover:bg-surface2"
-              >
-                زیادکردنی «{q}»
-              </button>
-            )}
-            {!filtered.length && !allowCustom && <p className="px-3.5 py-4 text-sm text-muted text-center">هیچ نەدۆزرایەوە</p>}
+            <div className="app-scroll grow divide-y divide-line/60 safe-b">{list}</div>
           </div>
         </div>
       )}
