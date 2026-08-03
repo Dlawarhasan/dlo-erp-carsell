@@ -4,6 +4,7 @@ import type { Photo } from '../lib/types'
 import { getRepo } from '../lib/repo'
 import { uid } from '../lib/format'
 import { Img, resolvePhoto, thumbOf } from './Img'
+import { Portal } from './Portal'
 
 async function draw(bmp: ImageBitmap, max: number, quality: number, type = 'image/jpeg'): Promise<Blob> {
   const scale = Math.min(1, max / Math.max(bmp.width, bmp.height))
@@ -150,18 +151,20 @@ export function PhotoUploader({ photos, onChange }: { photos: Photo[]; onChange:
       {err ? <p className="text-xs text-bad mt-2">{err}</p> : <p className="text-xs text-muted mt-2">وێنەکان خۆکارانە بچووک دەکرێنەوە بۆ خێرایی زیاتر.</p>}
 
       {view && (
+        <Portal>
         <div
-          className="fixed inset-0 z-[80] bg-black/92 grid place-items-center p-4 no-print"
+          className="fixed inset-0 z-[95] bg-black/92 grid place-items-center p-4 no-print safe-t safe-b"
           onClick={() => {
             setView(null)
             setViewSrc('')
           }}
         >
-          <button className="absolute top-4 end-4 w-11 h-11 rounded-full bg-white/12 text-white grid place-items-center">
+          <button className="absolute top-[max(1rem,env(safe-area-inset-top))] end-4 w-11 h-11 rounded-full bg-white/12 text-white grid place-items-center">
             <X size={22} />
           </button>
           {viewSrc ? <img src={viewSrc} alt="" className="max-h-full max-w-full object-contain rounded-xl" /> : <Loader2 className="animate-spin text-white" />}
         </div>
+        </Portal>
       )}
     </div>
   )

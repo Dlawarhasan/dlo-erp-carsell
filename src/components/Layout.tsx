@@ -7,6 +7,7 @@ import {
 import { useApp } from '../store/app'
 import { Toasts } from './ui'
 import { ShowroomMark } from './Brand'
+import { Portal } from './Portal'
 
 const NAV = [
   { to: '/', icon: LayoutDashboard, label: 'داشبۆرد', end: true },
@@ -129,7 +130,8 @@ export function Layout() {
 
       {/* ============ زیاتر ============ */}
       {more && (
-        <div className="lg:hidden fixed inset-0 z-50 no-print" onClick={() => setMore(false)}>
+        <Portal>
+        <div className="lg:hidden fixed inset-0 z-[90] no-print" onClick={() => setMore(false)}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
           <div className="absolute bottom-0 inset-x-0 bg-surface border-t border-line rounded-t-3xl p-4 pb-8 animate-sheet safe-b" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
@@ -161,6 +163,7 @@ export function Layout() {
             </div>
           </div>
         </div>
+        </Portal>
       )}
 
       <Toasts items={toast} onDrop={drop} />
@@ -184,7 +187,7 @@ export function PageHead({
   back?: () => void
 }) {
   return (
-    <div className="sticky top-0 z-30 bg-bg/85 backdrop-blur border-b border-line no-print">
+    <div className="sticky top-0 z-30 bg-bg/90 backdrop-blur-md border-b border-line no-print safe-t safe-x">
       <div className="px-4 sm:px-6 py-3.5 flex items-center gap-3">
         {back && (
           <button onClick={back} className="p-2 -ms-2 text-muted hover:text-ink rounded-lg shrink-0">

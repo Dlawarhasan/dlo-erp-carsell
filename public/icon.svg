@@ -1,25 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#141B24"/>
-      <stop offset="1" stop-color="#090D12"/>
+    <linearGradient id="bg" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#1B2432"/>
+      <stop offset="0.55" stop-color="#0E141C"/>
+      <stop offset="1" stop-color="#070B10"/>
     </linearGradient>
-    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#F5C46B"/>
-      <stop offset="1" stop-color="#E8A838"/>
+    <linearGradient id="gold" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#FBDA92"/>
+      <stop offset="0.45" stop-color="#F0B44E"/>
+      <stop offset="1" stop-color="#D68B18"/>
     </linearGradient>
+    <radialGradient id="glow" cx="0.28" cy="0.18" r="0.8">
+      <stop offset="0" stop-color="#F0B44E" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#F0B44E" stop-opacity="0"/>
+    </radialGradient>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <g transform="translate(0,14)">
-    <path d="M110 300c0-10 5-18 14-21l24-8 34-58c8-14 23-22 39-22h102c16 0 31 8 39 22l34 58 24 8c9 3 14 11 14 21v46c0 9-7 16-16 16h-10v18c0 13-11 24-24 24h-16c-13 0-24-11-24-24v-18H176v18c0 13-11 24-24 24h-16c-13 0-24-11-24-24v-18h-2c-9 0-16-7-16-16z" fill="url(#gold)"/>
-    <path d="M196 200h120c8 0 16 4 20 11l26 45H150l26-45c4-7 12-11 20-11z" fill="#0B0F14" opacity=".55"/>
-    <circle cx="168" cy="300" r="17" fill="#0B0F14" opacity=".55"/>
-    <circle cx="344" cy="300" r="17" fill="#0B0F14" opacity=".55"/>
+
+  <rect width="512" height="512" rx="114" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="114" fill="url(#glow)"/>
+  <rect x="3" y="3" width="506" height="506" rx="112" fill="none" stroke="#F0B44E" stroke-opacity="0.20" stroke-width="6"/>
+
+  <!-- D — دەرەوە و کۆنتەری ناوەوە -->
+  <path
+    d="M144 112 h104 a144 144 0 0 1 0 288 h-104 z
+       M198 166 h50 a90 90 0 0 1 0 180 h-50 z"
+    fill="url(#gold)" fill-rule="evenodd"/>
+
+  <!-- ئۆتۆمبێل لەناو کۆنتەری D -->
+  <g transform="translate(208 227) scale(1.0)" fill="url(#gold)">
+    <path d="M4 40 v-10 c0-4 3-8 7-9 l15-4 13-15 c2-2 5-4 8-4 h28 c3 0 6 2 8 4 l13 15 15 4 c4 1 7 5 7 9 v10 c0 3-2 6-6 6 h-5 a13 13 0 0 0-26 0 h-40 a13 13 0 0 0-26 0 h-5 c-4 0-6-3-6-6 z"/>
+    <path d="M35 6 h42 l11 13 h-64 z" fill="#0E141C" opacity="0.6"/>
+    <circle cx="27" cy="46" r="9.5"/>
+    <circle cx="93" cy="46" r="9.5"/>
   </g>
-  <g stroke="#E8A838" stroke-width="14" stroke-linecap="round" fill="none" opacity=".95">
-    <path d="M92 118v-24a14 14 0 0 1 14-14h26"/>
-    <path d="M420 118v-24a14 14 0 0 0-14-14h-26"/>
-    <path d="M92 404v24a14 14 0 0 0 14 14h26"/>
-    <path d="M420 404v24a14 14 0 0 1-14 14h-26"/>
-  </g>
+
 </svg>

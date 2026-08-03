@@ -9,6 +9,7 @@ import { PageHead } from '../components/Layout'
 import { Sheet, Field, MoneyInput, Segmented, useConfirm, Empty, Picker } from '../components/ui'
 import { DamageMap } from '../components/DamageMap'
 import { Img, thumbOf } from '../components/Img'
+import { Portal } from '../components/Portal'
 import { CAR_STATUS, COLORS, TX_CATEGORY_KU } from '../lib/catalog'
 import { fmtDate, maskVin, money, num, todayISO, uid } from '../lib/format'
 import { carMoney } from '../lib/finance'
@@ -283,8 +284,9 @@ ${settings.showroomName} ${settings.phone ? '— ' + settings.phone : ''}`
 
       {/* گەلەری فوول */}
       {gallery !== null && (
-        <div className="fixed inset-0 z-[80] bg-black/95 no-print flex flex-col">
-          <div className="flex justify-between items-center p-4 text-white">
+        <Portal>
+        <div className="fixed inset-0 z-[95] bg-black/95 no-print flex flex-col">
+          <div className="flex justify-between items-center p-4 text-white safe-t">
             <span className="num text-sm">
               {gallery + 1} / {photos.length}
             </span>
@@ -303,6 +305,7 @@ ${settings.showroomName} ${settings.phone ? '— ' + settings.phone : ''}`
             ))}
           </div>
         </div>
+        </Portal>
       )}
 
       {/* زیادکردنی تێچوو */}

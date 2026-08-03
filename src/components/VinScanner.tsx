@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { X, Zap, ZapOff, Keyboard, ScanLine, Camera, Loader2, RefreshCw } from 'lucide-react'
 import { cleanVin, VIN_RE } from '../lib/format'
+import { Portal } from './Portal'
 
 type Mode = 'barcode' | 'ocr'
 
@@ -215,7 +216,8 @@ export function VinScanner({ onResult, onClose }: { onResult: (vin: string) => v
   }
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black no-print flex flex-col">
+    <Portal>
+    <div className="fixed inset-0 z-[100] bg-black no-print flex flex-col">
       <video ref={videoRef} playsInline muted autoPlay className="absolute inset-0 w-full h-full object-cover" />
       <div className="absolute inset-0 bg-black/35" />
 
@@ -292,5 +294,6 @@ export function VinScanner({ onResult, onClose }: { onResult: (vin: string) => v
         </button>
       </div>
     </div>
+    </Portal>
   )
 }

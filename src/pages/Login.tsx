@@ -49,7 +49,7 @@ export function Login() {
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-bg">
       {/* ---------- فۆرم ---------- */}
-      <div className="flex flex-col items-center justify-center p-6">
+      <div className="flex flex-col items-center justify-center p-6 safe-t safe-x">
         <form onSubmit={go} className="w-full max-w-sm space-y-5 animate-in">
           <div className="text-center mb-2">
             <button type="button" onClick={secret} className="mx-auto mb-5 block" aria-label="DLO IT">

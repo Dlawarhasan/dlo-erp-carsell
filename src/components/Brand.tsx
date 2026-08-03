@@ -5,25 +5,38 @@
 
 export function BrandMark({ size = 56, className = '' }: { size?: number; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" className={className} aria-label="DLO IT">
+    <svg width={size} height={size} viewBox="0 0 512 512" className={className} aria-label="DLO IT">
       <defs>
-        <linearGradient id="bmg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#F5C86E" />
-          <stop offset="1" stopColor="#E09A22" />
+        <linearGradient id="bmBg" x1="0.1" y1="0" x2="0.9" y2="1">
+          <stop offset="0" stopColor="#1B2432" />
+          <stop offset="0.55" stopColor="#0E141C" />
+          <stop offset="1" stopColor="#070B10" />
         </linearGradient>
+        <linearGradient id="bmGold" x1="0.15" y1="0" x2="0.85" y2="1">
+          <stop offset="0" stopColor="#FBDA92" />
+          <stop offset="0.45" stopColor="#F0B44E" />
+          <stop offset="1" stopColor="#D68B18" />
+        </linearGradient>
+        <radialGradient id="bmGlow" cx="0.28" cy="0.18" r="0.8">
+          <stop offset="0" stopColor="#F0B44E" stopOpacity="0.2" />
+          <stop offset="1" stopColor="#F0B44E" stopOpacity="0" />
+        </radialGradient>
       </defs>
-      <rect x="1.5" y="1.5" width="61" height="61" rx="17" fill="rgb(var(--c-surface2))" stroke="url(#bmg)" strokeWidth="3" />
-      {/* D */}
+      <rect width="512" height="512" rx="114" fill="url(#bmBg)" />
+      <rect width="512" height="512" rx="114" fill="url(#bmGlow)" />
+      <rect x="3" y="3" width="506" height="506" rx="112" fill="none" stroke="#F0B44E" strokeOpacity="0.2" strokeWidth="6" />
       <path
-        d="M20 18 v28 h8 a14 14 0 0 0 0 -28 z"
-        fill="none"
-        stroke="url(#bmg)"
-        strokeWidth="6.5"
-        strokeLinejoin="round"
-        strokeLinecap="round"
+        d="M144 112 h104 a144 144 0 0 1 0 288 h-104 z
+           M198 166 h50 a90 90 0 0 1 0 180 h-50 z"
+        fill="url(#bmGold)"
+        fillRule="evenodd"
       />
-      {/* خاڵی IT */}
-      <circle cx="44" cy="44" r="4" fill="url(#bmg)" />
+      <g transform="translate(208 227)" fill="url(#bmGold)">
+        <path d="M4 40 v-10 c0-4 3-8 7-9 l15-4 13-15 c2-2 5-4 8-4 h28 c3 0 6 2 8 4 l13 15 15 4 c4 1 7 5 7 9 v10 c0 3-2 6-6 6 h-5 a13 13 0 0 0-26 0 h-40 a13 13 0 0 0-26 0 h-5 c-4 0-6-3-6-6 z" />
+        <path d="M35 6 h42 l11 13 h-64 z" fill="#0E141C" opacity="0.6" />
+        <circle cx="27" cy="46" r="9.5" />
+        <circle cx="93" cy="46" r="9.5" />
+      </g>
     </svg>
   )
 }

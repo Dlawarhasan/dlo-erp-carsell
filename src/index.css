@@ -173,6 +173,13 @@
   .safe-b {
     padding-bottom: env(safe-area-inset-bottom);
   }
+  /* دووری لە Dynamic Island / notch — بۆ ئەپی جێگیر لەسەر مۆبایل */
+  .safe-t {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-x {
+    padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+  }
 }
 
 /* ================= چاپکردن — عەقد ================= */

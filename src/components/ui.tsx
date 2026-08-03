@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { X, Search, ChevronDown, Check, AlertTriangle } from 'lucide-react'
+import { Portal } from './Portal'
 
 /* ---------------- Sheet / Modal ---------------- */
 export function Sheet({
@@ -30,7 +31,8 @@ export function Sheet({
   }, [open, onClose])
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex sm:items-center items-end justify-center no-print">
+    <Portal>
+    <div className="fixed inset-0 z-[90] flex sm:items-center items-end justify-center no-print">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] animate-in" onClick={onClose} />
       <div
         className={`relative w-full ${wide ? 'sm:max-w-4xl' : 'sm:max-w-lg'} max-h-[92vh] flex flex-col
@@ -46,6 +48,7 @@ export function Sheet({
         {footer && <div className="px-5 py-3.5 border-t border-line shrink-0 flex gap-2 justify-end safe-b">{footer}</div>}
       </div>
     </div>
+    </Portal>
   )
 }
 
@@ -236,7 +239,8 @@ export function Picker({
 
       {/* ---- مۆبایل: شیتی خوارەوە ---- */}
       {open && !desktop && (
-        <div className="fixed inset-0 z-[70] flex items-end no-print">
+        <Portal>
+        <div className="fixed inset-0 z-[95] flex items-end no-print">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] animate-in" onClick={() => setOpen(false)} />
           <div className="relative w-full bg-surface border-t border-line rounded-t-3xl shadow-pop animate-sheet flex flex-col max-h-[80dvh]">
             <div className="shrink-0 px-4 pt-3 pb-3 border-b border-line">
@@ -252,6 +256,7 @@ export function Picker({
             <div className="app-scroll grow divide-y divide-line/60 safe-b">{list}</div>
           </div>
         </div>
+        </Portal>
       )}
     </div>
   )
