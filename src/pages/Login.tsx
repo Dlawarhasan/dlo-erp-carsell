@@ -10,6 +10,7 @@ export function Login() {
   const [pass, setPass] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [code, setCode] = useState('')
   const [setup, setSetup] = useState(false)
   const taps = useRef(0)
 
@@ -27,20 +28,33 @@ export function Login() {
   const go = async (e: React.FormEvent) => {
     e.preventDefault()
     setErr('')
+    setCode('')
     setBusy(true)
     try {
       await signIn(email, pass)
     } catch (ex: unknown) {
-      const code = (ex as { code?: string })?.code || ''
-      setErr(
-        code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')
-          ? 'ئیمەیل یان وشەی نهێنی هەڵەیە'
-          : code.includes('too-many-requests')
-            ? 'هەوڵی زۆر — تکایە چەند خولەکێک چاوەڕێ بکە'
-            : code.includes('network')
-              ? 'کێشەی ئینتەرنێت — پەیوەندییەکەت بپشکنە'
-              : 'نەتوانرا بچیتە ژوورەوە',
-      )
+      const e = ex as { code?: string; message?: string }
+      const code = e?.code || ''
+      const raw = `${code} ${e?.message || ''}`.toLowerCase()
+
+      const pick = () => {
+        if (/invalid-credential|wrong-password|user-not-found|invalid-login/.test(raw))
+          return 'ئیمەیل یان وشەی نهێنی هەڵەیە'
+        if (raw.includes('invalid-email')) return 'شێوەی ئیمەیلەکە هەڵەیە'
+        if (raw.includes('user-disabled')) return 'ئەم هەژمارە ڕاگیراوە'
+        if (raw.includes('too-many-requests')) return 'هەوڵی زۆر — تکایە چەند خولەکێک چاوەڕێ بکە'
+        if (raw.includes('network')) return 'کێشەی ئینتەرنێت — پەیوەندییەکەت بپشکنە'
+        if (raw.includes('operation-not-allowed'))
+          return 'لە Firebase ڕێگە بە Email/Password نەدراوە.\nAuthentication → Sign-in method → Email/Password → Enable'
+        if (raw.includes('configuration-not-found'))
+          return 'Authentication لەم پرۆژەیەدا دانەمەزراوە.\nFirebase → Authentication → Get started'
+        if (/requests-from-referer|referer.*blocked|api-key-not-valid|invalid-api-key|blocked/.test(raw))
+          return 'کلیلی API بەربەست کراوە.\nGoogle Cloud → Credentials → کلیلەکە → Website restrictions:\ndlo-erp-cars.web.app/*  زیاد بکە،\nو API restrictions بکە بە «Don’t restrict key»'
+        return 'نەتوانرا بچیتە ژوورەوە'
+      }
+
+      setErr(pick())
+      setCode(code || e?.message?.slice(0, 90) || 'unknown')
     } finally {
       setBusy(false)
     }
@@ -86,7 +100,16 @@ export function Login() {
             />
           </div>
 
-          {err && <p className="text-sm text-bad bg-bad/10 border border-bad/25 rounded-xl px-3.5 py-2.5">{err}</p>}
+          {err && (
+            <div className="text-sm text-bad bg-bad/10 border border-bad/25 rounded-xl px-3.5 py-2.5">
+              <p className="whitespace-pre-line leading-6">{err}</p>
+              {code && (
+                <p dir="ltr" className="mt-2 pt-2 border-t border-bad/20 text-[11px] text-bad/70 font-mono break-all text-start">
+                  {code}
+                </p>
+              )}
+            </div>
+          )}
 
           <button disabled={busy} className="btn-brand w-full !py-3">
             {busy ? <Loader2 size={18} className="animate-spin" /> : <LogIn size={18} />}
