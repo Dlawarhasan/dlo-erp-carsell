@@ -44,7 +44,7 @@ const isOverdue = (d: Debt) => {
 }
 
 const KIND_KU: Record<DebtKind, string> = {
-  receivable: 'خەڵک قەرزارە بۆم',
+  receivable: 'خەڵک قەرزارمە',
   payable: 'من قەرزارم',
 }
 
@@ -132,7 +132,7 @@ export default function Debts() {
         {/* ── پوختە ── */}
         <div className="grid grid-cols-2 gap-3">
           <Stat
-            label="خەڵک قەرزارە بۆم"
+            label="خەڵک قەرزارمە"
             value={<span className="num">{money(inSum, cur)}</span>}
             sub={`${open.filter((d) => d.kind === 'receivable').length} کەس`}
             tone="ok"
@@ -496,7 +496,7 @@ function DebtForm({ debt, customers, onClose }: { debt: Debt; customers: { id: s
             value={d.kind}
             onChange={(v) => set('kind', v)}
             options={[
-              { v: 'receivable' as DebtKind, label: 'خەڵک قەرزارە بۆم' },
+              { v: 'receivable' as DebtKind, label: 'خەڵک قەرزارمە' },
               { v: 'payable' as DebtKind, label: 'من قەرزارم' },
             ]}
           />

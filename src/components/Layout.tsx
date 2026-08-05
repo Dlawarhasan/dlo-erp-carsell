@@ -30,13 +30,14 @@ export function Layout() {
   const [more, setMore] = useState(false)
   const nav = useNavigate()
   const loc = useLocation()
-  const [theme, setTheme] = useState(() => localStorage.getItem('gm.theme') || 'dark')
+  const [theme, setTheme] = useState(() => localStorage.getItem('gm.theme') || 'light')
 
   const flip = () => {
     const t = theme === 'dark' ? 'light' : 'dark'
     setTheme(t)
     localStorage.setItem('gm.theme', t)
     document.documentElement.className = 'theme-' + t
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t === 'dark' ? '#090D12' : '#F5F7FA')
   }
 
   const items = NAV.filter((n) => !n.cap || can(n.cap))
