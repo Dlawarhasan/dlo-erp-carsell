@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { getRepo, setPhotoStore, type SessionUser, type CollName } from '../lib/repo'
-import type { AppUser, AuditEntry, Car, Contract, Customer, Partner, Settings, Tx, Role } from '../lib/types'
+import type { AppUser, AuditEntry, Car, Contract, Customer, Debt, Partner, Settings, Tx, Role } from '../lib/types'
 import { DEFAULT_TERMS, DEFAULT_TERMS_AR } from '../lib/catalog'
 import { uid } from '../lib/format'
 import { fx } from '../lib/feedback'
@@ -49,6 +49,7 @@ interface AppState {
   customers: Customer[]
   contracts: Contract[]
   txs: Tx[]
+  debts: Debt[]
   partners: Partner[]
   users: AppUser[]
   audit: AuditEntry[]
@@ -79,6 +80,7 @@ export const useApp = create<AppState>((set, get) => ({
   customers: [],
   contracts: [],
   txs: [],
+  debts: [],
   partners: [],
   users: [],
   audit: [],
@@ -100,6 +102,7 @@ export const useApp = create<AppState>((set, get) => ({
     bind('customers', 'customers')
     bind('contracts', 'contracts')
     bind('txs', 'txs')
+    bind('debts', 'debts')
     bind('partners', 'partners')
     bind('users', 'users')
     unsubs.push(repo.watch<AuditEntry>('audit', (rows) => set({ audit: rows.sort((a, b) => b.at - a.at).slice(0, 500) })))

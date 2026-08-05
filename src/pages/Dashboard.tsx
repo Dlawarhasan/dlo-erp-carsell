@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ScanLine, Plus, Car, FileText, TrendingUp, AlertTriangle, Wallet, ArrowLeft, Clock } from 'lucide-react'
+import { ScanLine, Plus, Car, FileText, TrendingUp, AlertTriangle, Wallet, ArrowLeft, Clock, NotebookPen } from 'lucide-react'
 import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
 import { Stat } from '../components/ui'
@@ -13,7 +13,7 @@ const firstOfMonth = () => todayISO().slice(0, 8) + '01'
 
 export default function Dashboard() {
   const nav = useNavigate()
-  const { cars, contracts, txs, settings, user, can } = useApp()
+  const { cars, contracts, txs, debts, settings, user, can } = useApp()
   const rate = settings.usdRate
 
   const stats = useMemo(() => {
@@ -26,6 +26,26 @@ export default function Dashboard() {
   }, [cars, contracts, txs, rate])
 
   const dues = useMemo(() => openInstallments(contracts), [contracts])
+
+  /* دەفتەری قەرز — قەرزی پێش سیستەم */
+  const debtSum = useMemo(() => {
+    const open = (debts || []).filter((d) => d.status !== 'closed')
+    const left = (d: (typeof open)[number]) =>
+      Math.max(0, (d.amount || 0) - (d.payments || []).reduce((s, p) => s + (p.amount || 0), 0))
+    const usd = (d: (typeof open)[number]) => {
+      const v = left(d)
+      return d.currency === 'USD' ? v : v / (d.rate || rate)
+    }
+    const inn = open.filter((d) => d.kind === 'receivable').reduce((s, d) => s + usd(d), 0)
+    const out = open.filter((d) => d.kind === 'payable').reduce((s, d) => s + usd(d), 0)
+    const today = todayISO()
+    const late = open.filter((d) => {
+      if (left(d) <= 0) return false
+      if (d.installments?.length) return d.installments.some((i) => i.paid < i.amount && i.dueDate < today)
+      return !!d.dueDate && d.dueDate < today
+    }).length
+    return { inn, out, late, count: open.filter((d) => left(d) > 0).length }
+  }, [debts, rate])
   const overdue = dues.filter((d) => d.overdue)
   const soon = dues.filter((d) => !d.overdue && d.daysLeft <= 14).slice(0, 4)
   const recentCars = useMemo(() => [...cars].sort((a, b) => b.createdAt - a.createdAt).slice(0, 6), [cars])
@@ -85,6 +105,34 @@ export default function Dashboard() {
                   .map((d) => d.contract.buyer.name)
                   .join('، ')}
                 {overdue.length > 2 ? ' و کەسانی تر' : ''}
+              </p>
+            </div>
+            <ArrowLeft size={18} className="text-muted shrink-0" />
+          </button>
+        )}
+
+        {/* دەفتەری قەرز */}
+        {can('money.view') && debtSum.count > 0 && (
+          <button onClick={() => nav('/debts')} className="card w-full p-4 flex items-center gap-3 text-start">
+            <span className="w-10 h-10 rounded-xl bg-brand/15 text-brand grid place-items-center shrink-0">
+              <NotebookPen size={20} />
+            </span>
+            <div className="grow min-w-0">
+              <p className="font-medium text-sm flex items-center gap-2">
+                دەفتەری قەرز
+                {debtSum.late > 0 && (
+                  <span className="text-[10px] bg-warn/20 text-warn px-1.5 py-0.5 rounded-md">
+                    <span className="num">{debtSum.late}</span> دواکەوتوو
+                  </span>
+                )}
+              </p>
+              <p className="text-xs text-muted mt-0.5">
+                بۆم <b className="num text-ok">{money(debtSum.inn, 'USD')}</b>
+                {debtSum.out > 0 && (
+                  <>
+                    {' · '}لەسەرم <b className="num text-bad">{money(debtSum.out, 'USD')}</b>
+                  </>
+                )}
               </p>
             </div>
             <ArrowLeft size={18} className="text-muted shrink-0" />

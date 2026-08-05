@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, useNavigate, useLocation, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard, Car, FileText, Wallet, Users, ShieldCheck, Settings as Cog,
-  ScanLine, MoreHorizontal, LogOut, Sun, Moon, UserCog, History, CloudOff, Cloud, Handshake, X,
+  ScanLine, MoreHorizontal, LogOut, Sun, Moon, UserCog, History, CloudOff, Cloud, Handshake, NotebookPen, X,
 } from 'lucide-react'
 import { useApp } from '../store/app'
 import { Toasts } from './ui'
@@ -14,6 +14,7 @@ const NAV = [
   { to: '/cars', icon: Car, label: 'ئۆتۆمبێلەکان' },
   { to: '/contracts', icon: FileText, label: 'عەقدەکان' },
   { to: '/accounting', icon: Wallet, label: 'حسابات', cap: 'money.view' as const },
+  { to: '/debts', icon: NotebookPen, label: 'دەفتەری قەرز', cap: 'money.view' as const },
   { to: '/customers', icon: Users, label: 'کریارەکان' },
   { to: '/partners', icon: Handshake, label: 'شەریکەکان', cap: 'money.view' as const },
   { to: '/security', icon: ShieldCheck, label: 'ئاسایش' },

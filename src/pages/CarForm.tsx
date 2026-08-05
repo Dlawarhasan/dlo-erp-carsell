@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ScanLine, Save, Loader2, AlertTriangle, Car as CarIcon, Palette, Gauge, Wallet, Camera, Wrench } from 'lucide-react'
+import { ScanLine, Save, Loader2, AlertTriangle, Car as CarIcon, Palette, Gauge, Wallet, Camera, Wrench, Sparkles, WifiOff, Check } from 'lucide-react'
 import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
 import { Field, Picker, Segmented, MoneyInput } from '../components/ui'
@@ -10,6 +10,8 @@ import { VinScanner } from '../components/VinScanner'
 import { BRANDS, BRAND_LIST, COLORS, BODY_TYPES, FUELS, TRANSMISSIONS, CYLINDERS, DRIVES, ORIGINS, CAR_STATUS } from '../lib/catalog'
 import type { Car, Currency, PartState, Photo } from '../lib/types'
 import { cleanVin, todayISO, uid, VIN_RE, vinChecksumOk, vinYear } from '../lib/format'
+import { decodeVin, type VinInfo } from '../lib/vin'
+import { fx } from '../lib/feedback'
 
 const YEARS = Array.from({ length: 42 }, (_, i) => String(new Date().getFullYear() + 1 - i))
 
@@ -63,6 +65,8 @@ export default function CarForm() {
   const [scan, setScan] = useState(false)
   const [busy, setBusy] = useState(false)
   const [dup, setDup] = useState<Car | null>(null)
+  const [lookup, setLookup] = useState(false)
+  const [found, setFound] = useState<VinInfo | null>(null)
 
   const set = <K extends keyof Car>(k: K, v: Car[K]) => setC((p) => ({ ...p, [k]: v }))
 
@@ -80,6 +84,40 @@ export default function CarForm() {
       const y = vinYear(v)
       if (y && !editing) set('year', y)
     } else setDup(null)
+    setFound(null)
+  }
+
+  /** زانیاری لە VIN دەهێنێت و خانە بەتاڵەکان پڕ دەکاتەوە — هیچ شتێکی نووسراو ناگۆڕێت */
+  const fetchVin = async () => {
+    if (!vinOk) return say('سەرەتا VINـێکی دروست بنووسە', 'bad')
+    setLookup(true)
+    setFound(null)
+    try {
+      const r = await decodeVin(c.vin)
+      setFound(r)
+      setC((p) => ({
+        ...p,
+        brand: r.brand && (!p.brand || p.brand !== r.brand) ? r.brand : p.brand,
+        // ئەگەر براند گۆڕا، مۆدێلی کۆن ڕەت دەکەینەوە
+        model: r.brand && p.brand && p.brand !== r.brand ? r.model || '' : r.model || p.model,
+        year: r.year || p.year,
+        bodyType: p.bodyType || r.bodyType || '',
+        fuel: p.fuel || r.fuel || '',
+        cylinders: p.cylinders || r.cylinders,
+        drive: p.drive || r.drive,
+        origin: p.origin || r.origin,
+      }))
+      if (r.brand) {
+        fx('ok')
+        say(r.model ? `${r.brand} ${r.model} — زانیاری هێنرا` : `${r.brand} دۆزرایەوە`)
+      } else {
+        say('نەتوانرا براند دیاری بکرێت — بە دەست هەڵیبژێرە', 'info')
+      }
+    } catch {
+      say('نەتوانرا زانیاری بهێنرێت', 'bad')
+    } finally {
+      setLookup(false)
+    }
   }
 
   const valid = vinOk && c.brand && c.model && c.color && !dup
@@ -166,6 +204,51 @@ export default function CarForm() {
                   </button>
                 )}
               </div>
+
+              {/* هێنانی زانیاری لە VIN */}
+              {vinOk && !dup && (
+                <div className="mt-2.5">
+                  <button
+                    type="button"
+                    onClick={fetchVin}
+                    disabled={lookup}
+                    className="btn-ghost w-full !py-2 text-[13px] justify-center"
+                  >
+                    {lookup ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} className="text-brand" />}
+                    {lookup ? 'دەگەڕێم...' : 'زانیاری بهێنە لە VIN'}
+                  </button>
+
+                  {found && (
+                    <div className="mt-2 text-xs rounded-xl border border-line bg-surface2 px-3 py-2.5 space-y-1.5">
+                      <p className="flex items-center gap-1.5 flex-wrap">
+                        {found.brand ? (
+                          <>
+                            <Check size={13} className="text-ok shrink-0" />
+                            <b>{found.brand}</b>
+                            {found.model && <b>{found.model}</b>}
+                            {found.year && <span className="num">{found.year}</span>}
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle size={13} className="text-warn shrink-0" />
+                            نەناسرایەوە — بە دەست هەڵیبژێرە
+                          </>
+                        )}
+                      </p>
+                      {!found.online && (
+                        <p className="flex items-center gap-1.5 text-muted">
+                          <WifiOff size={12} className="shrink-0" />
+                          بەبێ ئینتەرنێت — تەنها براند و ساڵ
+                        </p>
+                      )}
+                      {found.missing.length > 0 && (
+                        <p className="text-muted">نەدۆزرانەوە: {found.missing.join('، ')} — خۆت پڕیان بکەرەوە</p>
+                      )}
+                      <p className="text-muted/70">هەموو خانەکان دەگۆڕدرێن پێش پاشەکەوتکردن</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </Field>
 
             <div className="grid sm:grid-cols-2 gap-4">

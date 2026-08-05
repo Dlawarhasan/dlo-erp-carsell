@@ -128,6 +128,8 @@ export type TxCategory =
   | 'withdraw'
   | 'commission'
   | 'partner'
+  | 'debt_in'
+  | 'debt_out'
   | 'other'
 
 export interface Tx {
@@ -197,4 +199,52 @@ export interface Settings {
   photoStore?: 'firestore' | 'storage' | 'cloudinary'
   cloudinaryName?: string
   cloudinaryPreset?: string
+}
+
+/* ═══════════════ دەفتەری قەرز (قەرزی پێش سیستەم) ═══════════════ */
+
+/** `receivable` = خەڵک قەرزارن بۆ ئێمە · `payable` = ئێمە قەرزارین بۆ خەڵک */
+export type DebtKind = 'receivable' | 'payable'
+export type DebtStatus = 'open' | 'closed'
+
+export interface DebtPayment {
+  id: string
+  date: string
+  amount: number
+  /** ئایا چووەتە سندوقی سیستەمەوە؟ */
+  toCashbox: boolean
+  account?: 'cash' | 'bank'
+  txId?: string
+  note?: string
+  at: number
+  by?: string
+  byName?: string
+}
+
+export interface Debt {
+  id: string
+  kind: DebtKind
+  /** ناوی کەسەکە — دەکرێت لە کریارە تۆمارکراوەکان بێت یان ئازاد بنووسرێت */
+  personName: string
+  customerId?: string
+  phone?: string
+  amount: number
+  currency: Currency
+  /** نرخی دۆلار لە کاتی تۆمارکردن — بۆ ژماردنی کۆی گشتی */
+  rate: number
+  /** بەرواری خودی قەرزەکە (لەوانەیە زۆر کۆن بێت) */
+  date: string
+  dueDate?: string
+  reason?: string
+  note?: string
+  /** ئۆتۆمبێلی پەیوەندیدار — نووسینێکی ئازاد، چونکە لەوانەیە لە سیستەمدا نەبێت */
+  carInfo?: string
+  /** خشتەی قیست — ئەگەر بەتاڵ بێت، پارەدانی ئازادە */
+  installments?: Installment[]
+  payments: DebtPayment[]
+  status: DebtStatus
+  createdAt: number
+  updatedAt?: number
+  createdBy?: string
+  createdByName?: string
 }

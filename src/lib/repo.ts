@@ -2,7 +2,7 @@ import Dexie, { type Table } from 'dexie'
 import { getFbConfig } from './firebaseConfig'
 import type { AppUser, Role } from './types'
 
-export const COLLECTIONS = ['cars', 'customers', 'contracts', 'txs', 'partners', 'users', 'audit', 'settings'] as const
+export const COLLECTIONS = ['cars', 'customers', 'contracts', 'txs', 'debts', 'partners', 'users', 'audit', 'settings'] as const
 export type CollName = (typeof COLLECTIONS)[number]
 
 export interface SessionUser {
@@ -73,6 +73,7 @@ class LocalDB extends Dexie {
   cars!: Table<any, string>
   customers!: Table<any, string>
   contracts!: Table<any, string>
+  debts!: Table<any, string>
   txs!: Table<any, string>
   partners!: Table<any, string>
   users!: Table<any, string>
@@ -89,6 +90,10 @@ class LocalDB extends Dexie {
       users: 'id, email',
       audit: 'id, at',
       settings: 'id',
+    })
+    // ٢) زیادکردنی دەفتەری قەرز — داتای کۆن هەروەک خۆی دەمێنێتەوە
+    this.version(2).stores({
+      debts: 'id, kind, status, date',
     })
   }
 }

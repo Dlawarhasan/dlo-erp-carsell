@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
+import { NotebookPen } from 'lucide-react'
 import { Empty, Field, MoneyInput, Picker, Segmented, Sheet, Stat, useConfirm } from '../components/ui'
 import { balances, carMoney, openInstallments, profitInRange } from '../lib/finance'
 import { EXPENSE_CATEGORIES, TX_CATEGORY_KU } from '../lib/catalog'
@@ -16,7 +17,7 @@ const daysAgo = (n: number) => new Date(Date.now() - n * 86400000).toISOString()
 
 export default function Accounting() {
   const nav = useNavigate()
-  const { txs, cars, contracts, settings, save, remove, log, say, can, user } = useApp()
+  const { txs, cars, contracts, debts, settings, save, remove, log, say, can, user } = useApp()
   const { ask, node } = useConfirm()
   const [tab, setTab] = useState<'sum' | 'cash' | 'debt' | 'profit'>('sum')
   const [cur, setCur] = useState<Currency>('USD')
@@ -35,6 +36,24 @@ export default function Accounting() {
   const prof = useMemo(() => profitInRange(cars, txs, contracts, cur, rate, from, to), [cars, txs, contracts, cur, rate, from, to])
   const dues = useMemo(() => openInstallments(contracts), [contracts])
   const overdue = dues.filter((d) => d.overdue)
+
+  /* پوختەی دەفتەری قەرزی کۆن */
+  const oldDebt = useMemo(() => {
+    const open = (debts || []).filter((d) => d.status !== 'closed')
+    const conv = (d: (typeof open)[number]) => {
+      const left = Math.max(0, (d.amount || 0) - (d.payments || []).reduce((a, p) => a + (p.amount || 0), 0))
+      if (!left) return 0
+      if (d.currency === cur) return left
+      const r = d.rate || settings.usdRate
+      return cur === 'USD' ? left / r : left * r
+    }
+    const rows = open.filter((d) => conv(d) > 0)
+    return {
+      inn: rows.filter((d) => d.kind === 'receivable').reduce((s, d) => s + conv(d), 0),
+      out: rows.filter((d) => d.kind === 'payable').reduce((s, d) => s + conv(d), 0),
+      count: rows.length,
+    }
+  }, [debts, cur, settings.usdRate])
 
   const soldCars = useMemo(
     () =>
@@ -243,6 +262,23 @@ export default function Accounting() {
         {/* ============ قەرز ============ */}
         {tab === 'debt' && (
           <div className="space-y-3">
+            {/* دەفتەری قەرزی کۆن */}
+            {oldDebt.count > 0 && (
+              <button onClick={() => nav('/debts')} className="card w-full p-3.5 flex items-center gap-3 text-start">
+                <span className="w-9 h-9 rounded-xl bg-brand/15 text-brand grid place-items-center shrink-0">
+                  <NotebookPen size={17} />
+                </span>
+                <div className="grow min-w-0">
+                  <p className="text-sm font-medium">دەفتەری قەرز (پێش سیستەم)</p>
+                  <p className="text-xs text-muted mt-0.5">
+                    بۆم <b className="num text-ok">{money(oldDebt.inn, cur)}</b>
+                    {oldDebt.out > 0 && <> · لەسەرم <b className="num text-bad">{money(oldDebt.out, cur)}</b></>}
+                  </p>
+                </div>
+                <span className="text-xs text-muted shrink-0 num">{oldDebt.count}</span>
+              </button>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               <Stat label="کۆی قەرز" value={<span className="num">{money(dues.reduce((s, d) => s + d.rest, 0), dues[0]?.contract.currency || cur)}</span>} tone="brand" icon={<CalendarClock size={16} />} />
               <Stat label="دواکەوتوو" value={<span className="num">{money(overdue.reduce((s, d) => s + d.rest, 0), overdue[0]?.contract.currency || cur)}</span>} sub={<><span className="num">{overdue.length}</span> قیست</>} tone="bad" icon={<AlertTriangle size={16} />} />

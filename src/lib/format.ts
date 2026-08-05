@@ -88,13 +88,26 @@ export function vinChecksumOk(vin: string) {
 /** ساڵی مۆدێل لە VIN (پێگەی ١٠) */
 export function vinYear(vin: string): number | null {
   const map = 'ABCDEFGHJKLMNPRSTVWXY123456789'
-  const ch = (vin || '')[9]
+  const v = (vin || '').toUpperCase()
+  const ch = v[9]
   if (!ch) return null
-  const i = map.indexOf(ch.toUpperCase())
+  const i = map.indexOf(ch)
   if (i < 0) return null
   const y1 = 1980 + i
   const y2 = y1 + 30
   const now = new Date().getFullYear() + 1
+
+  /**
+   * پیتی ١٠ هەر ٣٠ ساڵ دووبارە دەبێتەوە، بۆیە دوو ئەگەر هەیە.
+   * لە ستانداردی ئەمریکا، پیتی ٧ جیایان دەکاتەوە:
+   *   ژمارە → ١٩٨٠–٢٠٠٩ · پیت → ٢٠١٠ بەرەوژوور
+   * ئەم یاسایە تەنها بۆ ئۆتۆمبێلی بازاڕی باکووری ئەمریکا ڕاستە
+   * (پیتی یەکەم: 1–5)، بۆیە بۆ ئەوانی تر نوێترین ئەگەر هەڵدەبژێرین.
+   */
+  const northAmerica = '12345'.includes(v[0])
+  const p7 = v[6]
+  if (northAmerica && p7 && p7 >= '0' && p7 <= '9') return y1 <= now ? y1 : y2
+
   return y2 <= now ? y2 : y1
 }
 
