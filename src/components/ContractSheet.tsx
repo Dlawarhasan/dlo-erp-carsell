@@ -3,6 +3,7 @@ import type { Contract, Settings } from '../lib/types'
 import { fmtDateShort, money, num } from '../lib/format'
 import { amountWordsAr, amountWordsKu } from '../lib/numwords'
 import { BODY_PARTS, PART_STATES } from '../lib/catalog'
+import dloLogo from '../assets/dlo-it-logo.png'
 
 type Lang = 'ku' | 'ar'
 
@@ -278,9 +279,14 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
           { role: t.buyer, name: c.buyer.name },
         ].map((party) => (
           <div className="contract-sign" key={party.role}>
-            <div><b>{party.role}</b><span>{party.name}</span></div>
-            <div className="contract-sign-line"><span>{t.signature}</span></div>
-            <div className="contract-fingerprint"><span>{t.fingerprint}</span></div>
+            <div className="contract-sign-person">
+              <b>{party.role}</b>
+              <span><small>{t.name}: </small>{party.name}</span>
+            </div>
+            <div className="contract-sign-actions">
+              <div className="contract-sign-line"><span>{t.signature}</span></div>
+              <div className="contract-fingerprint"><span>{t.fingerprint}</span></div>
+            </div>
           </div>
         ))}
       </section>
@@ -297,9 +303,11 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
       )}
 
       <footer className="contract-footer">
-        <span>{[s.city, s.address].filter(Boolean).join(' — ')}</span>
-        <b className="num">{s.phone || '—'}</b>
-        <span>{t.copy} · <span className="num">{c.no}</span></span>
+        <a href="https://www.instagram.com/dlo_.it/" target="_blank" rel="noreferrer" className="contract-promo-link">
+          <img src={dloLogo} alt="DLO.IT" className="contract-dlo-logo" />
+          <b className="num">07700581716</b>
+          <span>بۆ دروستکردنی ئەپلیکەیشن و سیستەمی داتابەیس پەیوەندیم پێوە بکە.</span>
+        </a>
       </footer>
     </article>
   )

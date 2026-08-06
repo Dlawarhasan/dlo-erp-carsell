@@ -8,6 +8,7 @@ import { useApp } from '../store/app'
 import { Toasts } from './ui'
 import { ShowroomMark } from './Brand'
 import { Portal } from './Portal'
+import dloLogo from '../assets/dlo-it-logo.png'
 
 const NAV = [
   { to: '/', icon: LayoutDashboard, label: 'داشبۆرد', end: true },
@@ -99,7 +100,12 @@ export function Layout() {
 
       {/* ============ ناوەڕۆک ============ */}
       <main className="grow min-w-0 h-full app-scroll pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0">
-        <Outlet />
+        <div className="min-h-full flex flex-col">
+          <div className="grow">
+            <Outlet />
+          </div>
+          <DloPromo />
+        </div>
       </main>
 
       {/* ============ ناڤی مۆبایل ============ */}
@@ -170,6 +176,24 @@ export function Layout() {
 
       <Toasts items={toast} onDrop={drop} />
     </div>
+  )
+}
+
+function DloPromo() {
+  return (
+    <footer className="no-print mx-4 sm:mx-6 mt-7 mb-3 lg:mb-5 px-4 py-2.5 rounded-xl border border-line bg-surface text-center text-[12px] sm:text-[13px] text-muted">
+      <a
+        href="https://www.instagram.com/dlo_.it/"
+        target="_blank"
+        rel="noreferrer"
+        className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 transition-opacity hover:opacity-75"
+        dir="rtl"
+      >
+        <img src={dloLogo} alt="DLO.IT" className="h-6 w-auto object-contain" />
+        <span className="num font-medium text-ink" dir="ltr">07700581716</span>
+        <span>بۆ دروستکردنی ئەپلیکەیشن و سیستەمی داتابەیس پەیوەندیم پێوە بکە.</span>
+      </a>
+    </footer>
   )
 }
 

@@ -2,6 +2,7 @@ import type { Contract, Settings } from './types'
 import { fmtDateShort, money, num } from './format'
 import { amountWordsAr, amountWordsKu } from './numwords'
 import { BODY_PARTS, PART_STATES } from './catalog'
+import dloLogo from '../assets/dlo-it-logo.png?inline'
 
 type Lang = 'ku' | 'ar'
 
@@ -56,43 +57,47 @@ const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;700&family=Noto+Naskh+Arabic:wght@400;700&display=swap');
 *{box-sizing:border-box}
 body{margin:0;background:#e9edf2;font-family:'Noto Naskh Arabic','Times New Roman',serif;color:#111}
-.sheet{--orange:#ff9d0a;--coral:#f04452;width:210mm;min-height:297mm;background:#fff;margin:10px auto;padding:8mm;box-shadow:0 2px 14px rgba(0,0,0,.15)}
+.sheet{--gold:#f0b44e;--gold-light:#fbda92;--ink:#0e141c;--ink-soft:#1b2432;--paper:#fffdf8;--line:#dce4ed;width:210mm;min-height:0;background:var(--paper);margin:10px auto;padding:5.5mm 6mm;box-shadow:0 2px 14px rgba(0,0,0,.15);font-size:8.5pt}
 .num{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
-.hd{display:flex;justify-content:space-between;align-items:center;border-bottom:1mm solid transparent;border-image:linear-gradient(90deg,var(--orange),var(--coral)) 1;padding:1mm 2mm 3mm;gap:14px}
-.hd h1{font-size:19pt;margin:0;font-family:'Noto Kufi Arabic',sans-serif;text-align:center}
-.hd p{margin:3px 0 0;font-size:9.5pt;color:#555;text-align:center}
-.meta{font-size:9.5pt;line-height:1.9;text-align:left;white-space:nowrap}
-h2.t{text-align:center;font-size:12pt;margin:9px 0 12px;color:var(--coral);font-family:'Noto Kufi Arabic',sans-serif}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:3mm}
-.box{border:1px solid #ffc4c8;border-radius:3mm;overflow:hidden;background:#fff4f4}
-.box>.bt{color:#fff;background:linear-gradient(100deg,var(--orange),var(--coral));padding:1.4mm 2.7mm;font-size:10pt;font-weight:700}
-.box>.bb{padding:2.5mm 2.7mm}
-.row{display:flex;gap:2mm;align-items:center;margin-bottom:1.4mm}
-.row span.k{color:#fff;background:#111;border-radius:999px;padding:.8mm 2mm 1mm;font-family:'Noto Kufi Arabic',sans-serif;font-size:8pt;font-weight:700;white-space:nowrap}
-.row span.v{font-size:10pt;font-weight:700;border-bottom:1px dotted #999;flex:1;padding-bottom:1mm;min-height:5mm}
-table{width:100%;border-collapse:collapse;font-size:10pt;background:#fff}
-td,th{border-left:1px solid #ffd0d2;border-bottom:1px solid #ffd0d2;padding:1.45mm 2mm}
-td.k{color:#fff;background:#111;width:90px;white-space:nowrap;font-family:'Noto Kufi Arabic',sans-serif;font-size:8pt}
+.hd{display:flex;justify-content:space-between;align-items:center;border-bottom:.65mm solid var(--gold);padding:.4mm 1mm 1.8mm;gap:10px}
+.hd h1{font-size:14pt;margin:0;font-family:'Noto Kufi Arabic',sans-serif;text-align:center}
+.hd p{margin:2px 0 0;font-size:7pt;color:#697789;text-align:center}
+.meta{font-size:7.2pt;line-height:1.55;text-align:left;white-space:nowrap}
+h2.t{text-align:center;font-size:8pt;margin:5px 0 7px;color:#a26b15;font-family:'Noto Kufi Arabic',sans-serif}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:2mm}
+.box{border:1px solid var(--line);border-radius:1.8mm;overflow:hidden;background:var(--paper)}
+.box>.bt{color:var(--ink);background:var(--gold);border-right:1.15mm solid var(--ink);padding:.75mm 2mm;font-family:'Noto Kufi Arabic',sans-serif;font-size:8pt;font-weight:700}
+.box>.bb{padding:1.1mm 1.8mm}
+.row{display:flex;gap:1.2mm;align-items:center;margin-bottom:.45mm}
+.row span.k{color:var(--ink);background:transparent;border:1px solid var(--line);border-right:.8mm solid var(--gold);border-radius:1mm;padding:.55mm 1.5mm .65mm;font-family:'Noto Kufi Arabic',sans-serif;font-size:6.8pt;font-weight:700;white-space:nowrap}
+.row span.v{font-size:8pt;font-weight:700;border-bottom:1px dotted #9caaba;flex:1;padding-bottom:.35mm;min-height:3.7mm}
+table{width:100%;border-collapse:collapse;font-size:7.8pt;background:var(--paper)}
+td,th{border-left:1px solid var(--line);border-bottom:1px solid var(--line);padding:.8mm 1.4mm}
+td.k{color:var(--ink);background:transparent;border-right:.8mm solid var(--gold);width:90px;white-space:nowrap;font-family:'Noto Kufi Arabic',sans-serif;font-size:6.8pt}
 td.v{font-weight:700}
 .vin{font-size:12.5pt;letter-spacing:.18em;font-weight:700;direction:ltr;text-align:left}
-.sec{margin-top:3mm;border:1px solid #ffc4c8;border-radius:3mm;overflow:hidden}
-.sec .hd2{color:#fff;background:linear-gradient(100deg,var(--orange),var(--coral));padding:1.4mm 2.7mm;font-family:'Noto Kufi Arabic',sans-serif;font-size:10pt;font-weight:700}
-.sec .bd{padding:2mm 2.7mm;font-size:10pt;line-height:1.7;background:#fff}
-ol.terms{margin:0;padding:0 20px 0 0;font-size:9pt;line-height:1.7}
-.signs{display:grid;grid-template-columns:1fr 1fr;gap:7mm;margin-top:5mm}
+.sec{margin-top:1.8mm;border:1px solid var(--line);border-radius:1.8mm;overflow:hidden}
+.sec .hd2{color:var(--ink);background:var(--gold);border-right:1.15mm solid var(--ink);padding:.75mm 2mm;font-family:'Noto Kufi Arabic',sans-serif;font-size:8pt;font-weight:700}
+.sec .bd{padding:1.2mm 1.8mm;font-size:7.7pt;line-height:1.35;background:var(--paper)}
+ol.terms{margin:0;padding:0 14px 0 0;font-size:7.2pt;line-height:1.36}
+.signs{display:grid;grid-template-columns:1fr 1fr;gap:4mm;margin-top:2.5mm}
 .sign{border:0;border-radius:0;padding:0}
-.sign .r{font-family:'Noto Kufi Arabic',sans-serif;font-size:9pt;font-weight:700;margin:0 0 3px}
-.sign .n{font-size:10.5pt;margin:0 0 12px}
+.sign .r{font-family:'Noto Kufi Arabic',sans-serif;font-size:7.2pt;font-weight:700;margin:0 0 2px}
+.sign .n{font-size:7.8pt;margin:0 0 6px}
 .sigline{display:flex;gap:12px;align-items:flex-end}
 .sigline .l{flex:1}
-.sigline .l .ln{height:46px;border-bottom:1px solid #666}
-.fp{width:26mm;height:26mm;border:1px solid #666;background:#fafafa;border-radius:2px}
-.cap{font-size:9pt;color:#555;text-align:center;margin:4px 0 0}
-.foot{font-size:9pt;color:#666;text-align:center;margin-top:4mm;padding-top:2mm;border-top:1px solid #ddd}
+.sigline .l .ln{height:28px;border-bottom:1px solid #666}
+.fp{width:14mm;height:14mm;border:1px solid #777;background:var(--paper);border-radius:2px}
+.cap{font-size:6.2pt;color:#555;text-align:center;margin:3px 0 0}
+.foot{font-size:7pt;color:#697789;text-align:center;margin-top:2mm;padding-top:1mm;border-top:1px solid var(--line)}
+.dlo-ad{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:1mm 3mm;min-height:8mm;margin:4mm 0 0;padding:1.2mm 2mm;border:1px solid var(--line);border-top:.8mm solid var(--gold);border-radius:1.8mm;color:var(--ink);background:#f6f0e4;font-size:7pt;text-align:center}
+.dlo-ad a{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:1mm 3mm;color:inherit;text-decoration:none}
+.dlo-ad img{height:5mm;width:auto;object-fit:contain}
+.dlo-ad b{color:#806325;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:8pt}
 @page{size:A4;margin:0}
 @media print{body{background:#fff}.sheet{margin:0;box-shadow:none;page-break-after:always}.sheet:last-child{page-break-after:auto}.noprint{display:none}}
 .bar{position:sticky;top:0;background:#111a24;color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;font-family:'Noto Kufi Arabic',sans-serif;font-size:13px}
-.bar button{background:linear-gradient(90deg,var(--orange),var(--coral));color:#fff;border:0;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;font-family:inherit}
+.bar button{background:var(--gold);color:var(--ink);border:0;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;font-family:inherit}
 `
 
 function sheet(c: Contract, s: Settings, lang: Lang) {
@@ -205,7 +210,7 @@ function sheet(c: Contract, s: Settings, lang: Lang) {
     ]
       .map(
         (p) => `<div class="sign">
-      <p class="r">${esc(p.r)}</p><p class="n">${esc(p.n)}</p>
+      <p class="r">${esc(p.r)}</p><p class="n"><b>${esc(t.name)}: </b>${esc(p.n)}</p>
       <div class="sigline">
         <div class="l"><div class="ln"></div><p class="cap">${esc(t.signature)}</p></div>
         <div><div class="fp"></div><p class="cap">${esc(t.fingerprint)}</p></div>
@@ -229,7 +234,7 @@ function sheet(c: Contract, s: Settings, lang: Lang) {
       : ''
   }
 
-  <p class="foot"><span class="num">${esc(c.no)}</span> · <span class="num">${fmtDateShort(c.date)}</span> · ${esc(s.showroomName)}</p>
+  <p class="dlo-ad"><a href="https://www.instagram.com/dlo_.it/" target="_blank" rel="noreferrer"><img src="${dloLogo}" alt="DLO.IT"><span class="num">07700581716</span><span>بۆ دروستکردنی ئەپلیکەیشن و سیستەمی داتابەیس پەیوەندیم پێوە بکە.</span></a></p>
 </div>`
 }
 
