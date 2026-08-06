@@ -55,44 +55,44 @@ const STATE_AR: Record<string, string> = { original: 'أصلي', painted: 'مص�
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;700&family=Noto+Naskh+Arabic:wght@400;700&display=swap');
 *{box-sizing:border-box}
-body{margin:0;background:#e9edf2;font-family:'Noto Naskh Arabic','Times New Roman',serif;color:#000}
-.sheet{width:210mm;min-height:297mm;background:#fff;margin:10px auto;padding:10mm 9mm;box-shadow:0 2px 14px rgba(0,0,0,.15)}
+body{margin:0;background:#e9edf2;font-family:'Noto Naskh Arabic','Times New Roman',serif;color:#111}
+.sheet{--orange:#ff9d0a;--coral:#f04452;width:210mm;min-height:297mm;background:#fff;margin:10px auto;padding:8mm;box-shadow:0 2px 14px rgba(0,0,0,.15)}
 .num{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
-.hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:8px;gap:14px}
-.hd h1{font-size:17pt;margin:0;font-family:'Noto Kufi Arabic',sans-serif}
-.hd p{margin:3px 0 0;font-size:9.5pt;color:#444}
-.meta{font-size:10pt;line-height:1.7;text-align:left;white-space:nowrap}
-h2.t{text-align:center;font-size:15pt;margin:12px 0;font-family:'Noto Kufi Arabic',sans-serif}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.box{border:1px solid #999;border-radius:4px;overflow:hidden}
-.box>.bt{background:#f2f4f6;border-bottom:1px solid #ccc;padding:5px 9px;font-size:10pt;font-weight:700}
-.box>.bb{padding:8px 9px}
-.row{display:flex;gap:6px;align-items:baseline;margin-bottom:6px}
-.row span.k{font-size:10.5pt;color:#555;white-space:nowrap}
-.row span.v{font-size:11pt;font-weight:700;border-bottom:1px dotted #999;flex:1;padding-bottom:2px}
-table{width:100%;border-collapse:collapse;font-size:10.5pt}
-td,th{border:1px solid #999;padding:5px 7px}
-td.k{background:#f7f8fa;color:#555;width:90px;white-space:nowrap}
+.hd{display:flex;justify-content:space-between;align-items:center;border-bottom:1mm solid transparent;border-image:linear-gradient(90deg,var(--orange),var(--coral)) 1;padding:1mm 2mm 3mm;gap:14px}
+.hd h1{font-size:19pt;margin:0;font-family:'Noto Kufi Arabic',sans-serif;text-align:center}
+.hd p{margin:3px 0 0;font-size:9.5pt;color:#555;text-align:center}
+.meta{font-size:9.5pt;line-height:1.9;text-align:left;white-space:nowrap}
+h2.t{text-align:center;font-size:12pt;margin:9px 0 12px;color:var(--coral);font-family:'Noto Kufi Arabic',sans-serif}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:3mm}
+.box{border:1px solid #ffc4c8;border-radius:3mm;overflow:hidden;background:#fff4f4}
+.box>.bt{color:#fff;background:linear-gradient(100deg,var(--orange),var(--coral));padding:1.4mm 2.7mm;font-size:10pt;font-weight:700}
+.box>.bb{padding:2.5mm 2.7mm}
+.row{display:flex;gap:2mm;align-items:center;margin-bottom:1.4mm}
+.row span.k{color:#fff;background:#111;border-radius:999px;padding:.8mm 2mm 1mm;font-family:'Noto Kufi Arabic',sans-serif;font-size:8pt;font-weight:700;white-space:nowrap}
+.row span.v{font-size:10pt;font-weight:700;border-bottom:1px dotted #999;flex:1;padding-bottom:1mm;min-height:5mm}
+table{width:100%;border-collapse:collapse;font-size:10pt;background:#fff}
+td,th{border-left:1px solid #ffd0d2;border-bottom:1px solid #ffd0d2;padding:1.45mm 2mm}
+td.k{color:#fff;background:#111;width:90px;white-space:nowrap;font-family:'Noto Kufi Arabic',sans-serif;font-size:8pt}
 td.v{font-weight:700}
 .vin{font-size:12.5pt;letter-spacing:.18em;font-weight:700;direction:ltr;text-align:left}
-.sec{margin-top:12px}
-.sec .hd2{background:#f2f4f6;border:1px solid #999;border-bottom:0;border-radius:4px 4px 0 0;padding:5px 9px;font-size:10.5pt;font-weight:700}
-.sec .bd{border:1px solid #999;border-radius:0 0 4px 4px;padding:7px 9px;font-size:10.5pt;line-height:1.7}
-ol.terms{margin:0;padding:0 20px 0 0;font-size:10pt;line-height:1.75}
-.signs{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:14px}
-.sign{border:1px solid #999;border-radius:4px;padding:10px}
-.sign .r{font-size:10pt;font-weight:700;margin:0 0 3px}
+.sec{margin-top:3mm;border:1px solid #ffc4c8;border-radius:3mm;overflow:hidden}
+.sec .hd2{color:#fff;background:linear-gradient(100deg,var(--orange),var(--coral));padding:1.4mm 2.7mm;font-family:'Noto Kufi Arabic',sans-serif;font-size:10pt;font-weight:700}
+.sec .bd{padding:2mm 2.7mm;font-size:10pt;line-height:1.7;background:#fff}
+ol.terms{margin:0;padding:0 20px 0 0;font-size:9pt;line-height:1.7}
+.signs{display:grid;grid-template-columns:1fr 1fr;gap:7mm;margin-top:5mm}
+.sign{border:0;border-radius:0;padding:0}
+.sign .r{font-family:'Noto Kufi Arabic',sans-serif;font-size:9pt;font-weight:700;margin:0 0 3px}
 .sign .n{font-size:10.5pt;margin:0 0 12px}
 .sigline{display:flex;gap:12px;align-items:flex-end}
 .sigline .l{flex:1}
 .sigline .l .ln{height:46px;border-bottom:1px solid #666}
 .fp{width:26mm;height:26mm;border:1px solid #666;background:#fafafa;border-radius:2px}
 .cap{font-size:9pt;color:#555;text-align:center;margin:4px 0 0}
-.foot{font-size:9pt;color:#666;text-align:center;margin-top:12px;padding-top:6px;border-top:1px solid #ddd}
+.foot{font-size:9pt;color:#666;text-align:center;margin-top:4mm;padding-top:2mm;border-top:1px solid #ddd}
 @page{size:A4;margin:0}
 @media print{body{background:#fff}.sheet{margin:0;box-shadow:none;page-break-after:always}.sheet:last-child{page-break-after:auto}.noprint{display:none}}
 .bar{position:sticky;top:0;background:#111a24;color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;font-family:'Noto Kufi Arabic',sans-serif;font-size:13px}
-.bar button{background:#e8a838;color:#1a1204;border:0;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;font-family:inherit}
+.bar button{background:linear-gradient(90deg,var(--orange),var(--coral));color:#fff;border:0;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;font-family:inherit}
 `
 
 function sheet(c: Contract, s: Settings, lang: Lang) {

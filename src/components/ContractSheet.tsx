@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { type ReactNode } from 'react'
 import type { Contract, Settings } from '../lib/types'
 import { fmtDateShort, money, num } from '../lib/format'
 import { amountWordsAr, amountWordsKu } from '../lib/numwords'
@@ -24,7 +24,7 @@ const T = {
     model: 'مۆدێل',
     year: 'ساڵ',
     color: 'ڕەنگ',
-    vin: 'ژمارەی شانس (VIN)',
+    vin: 'ژمارەی شاسی (VIN)',
     km: 'کیلۆمەتر',
     plate: 'ژمارەی پلێت',
     body: 'شێواز',
@@ -50,7 +50,6 @@ const T = {
     note: 'تێبینی',
     fingerprint: 'پەنجەمۆر',
     signature: 'واژوو',
-    witness: 'شایەت',
     w1: 'شایەتی یەکەم',
     w2: 'شایەتی دووەم',
     footer: 'ئەم عەقدە بە ڕەزامەندی هەردوولا ئیمزا کراوە و لە بەرواری واژوودا کاری پێدەکرێت.',
@@ -99,7 +98,6 @@ const T = {
     note: 'ملاحظات',
     fingerprint: 'بصمة الإبهام',
     signature: 'التوقيع',
-    witness: 'شاهد',
     w1: 'الشاهد الأول',
     w2: 'الشاهد الثاني',
     footer: 'حرر هذا العقد برضا الطرفين ويعمل به من تاريخ التوقيع.',
@@ -118,243 +116,191 @@ const STATE_AR: Record<string, string> = {
   original: 'أصلي', painted: 'مصبوغ', putty: 'معجون', replaced: 'مستبدل', dented: 'مضروب', scratched: 'خدش',
 }
 
+function AutoMark() {
+  return (
+    <svg viewBox="0 0 116 82" aria-hidden="true" className="w-full h-full">
+      <path d="M12 26C30 9 83 7 105 26v33c-16 13-77 15-93 0V26Z" fill="none" stroke="currentColor" strokeWidth="4" />
+      <path d="M24 33h68l9 17H15l9-17Zm14 0 9-12h23l9 12" fill="none" stroke="currentColor" strokeWidth="4" strokeLinejoin="round" />
+      <circle cx="31" cy="53" r="8" fill="currentColor" />
+      <circle cx="85" cy="53" r="8" fill="currentColor" />
+      <path d="M43 62h30" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function SectionTitle({ children }: { children: ReactNode }) {
+  return <div className="contract-section-title"><span>{children}</span></div>
+}
+
+function Line({ label, children, className = '' }: { label: string; children?: ReactNode; className?: string }) {
+  return (
+    <div className={`contract-line ${className}`}>
+      <span className="contract-line-label">{label}</span>
+      <span className="contract-line-value">{children || ' '}</span>
+    </div>
+  )
+}
+
+function Party({ title, rows }: { title: string; rows: { label: string; value?: ReactNode }[] }) {
+  return (
+    <section className="contract-party">
+      <SectionTitle>{title}</SectionTitle>
+      <div className="contract-party-body">
+        {rows.map((row) => <Line key={row.label} label={row.label}>{row.value}</Line>)}
+      </div>
+    </section>
+  )
+}
+
 export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings; lang?: Lang }) {
   const t = T[lang]
   const issues = BODY_PARTS.filter((p) => (c.car.body || {})[p.key])
   const rest = c.price - (c.down || 0)
   const words = lang === 'ku' ? amountWordsKu(c.price, c.currency) : amountWordsAr(c.price, c.currency)
-
-  const L = ({ k, v }: { k: string; v?: React.ReactNode }) => (
-    <div className="flex gap-1.5 items-baseline">
-      <span className="text-[10.5pt] text-neutral-600 shrink-0">{k}:</span>
-      <span className="text-[11pt] font-bold border-b border-dotted border-neutral-400 grow pb-0.5">{v || ' '}</span>
-    </div>
-  )
+  const terms = lang === 'ku' ? (c.terms?.length ? c.terms : s.terms) : s.termsAr || []
+  const showroom = lang === 'ku' ? s.showroomName : s.showroomNameAr || s.showroomName
 
   return (
-    <div
-      className="print-sheet bg-white text-black font-doc mx-auto shadow-card print:shadow-none"
-      style={{ width: '100%', maxWidth: '820px', padding: '12px 16px' }}
-      dir="rtl"
-    >
-      {/* ---- سەردێڕ ---- */}
-      <div className="flex items-start justify-between gap-4 border-b-2 border-black pb-3">
-        <div className="flex items-center gap-3">
-          {s.logo && <img src={s.logo} alt="" className="w-16 h-16 object-contain" />}
-          <div>
-            <h1 className="text-[17pt] font-bold leading-tight">{lang === 'ku' ? s.showroomName : s.showroomNameAr || s.showroomName}</h1>
-            <p className="text-[9.5pt] text-neutral-700 mt-0.5">
-              {[s.city, s.address].filter(Boolean).join(' — ')}
-              {s.phone ? ` · ${s.phone}` : ''}
-              {s.phone2 ? ` · ${s.phone2}` : ''}
-            </p>
-          </div>
+    <article className="print-sheet contract-paper bg-white text-black font-doc mx-auto shadow-card print:shadow-none" dir="rtl">
+      <header className="contract-head">
+        <div className="contract-logo" dir="ltr">
+          {s.logo ? <img src={s.logo} alt="" /> : <AutoMark />}
         </div>
-        <div className="text-end text-[10pt] leading-6 shrink-0">
-          <p>
-            <span className="text-neutral-600">{t.no}: </span>
-            <b className="num">{c.no}</b>
-          </p>
-          <p>
-            <span className="text-neutral-600">{t.date}: </span>
-            <b className="num">{fmtDateShort(c.date)}</b>
-          </p>
+        <div className="contract-head-center" dir="rtl">
+          <p className="contract-head-kicker">{[s.city, s.address].filter(Boolean).join(' — ') || 'پێشانگای ئۆتۆمبێل'}</p>
+          <h1>{showroom}</h1>
+          <p className="contract-head-subtitle">{t.title}</p>
         </div>
+        <div className="contract-head-meta" dir="rtl">
+          <Line label={t.no}><b className="num">{c.no}</b></Line>
+          <Line label={t.date}><b className="num">{fmtDateShort(c.date)}</b></Line>
+          {s.phone && <Line label={t.phone}><b className="num">{s.phone}</b></Line>}
+        </div>
+      </header>
+
+      <div className="contract-divider" />
+
+      <div className="contract-parties avoid-break">
+        <Party title={t.seller} rows={[
+          { label: t.name, value: c.seller.name },
+          { label: t.phone, value: <span className="num">{c.seller.phone}</span> },
+          { label: t.address, value: c.seller.address },
+        ]} />
+        <Party title={t.buyer} rows={[
+          { label: t.name, value: c.buyer.name },
+          { label: t.phone, value: <span className="num">{c.buyer.phone}</span> },
+          { label: t.idNo, value: <span className="num">{c.buyer.idNumber}</span> },
+          { label: t.issuer, value: c.buyer.idIssuer },
+          { label: t.address, value: c.buyer.address },
+        ]} />
       </div>
 
-      <h2 className="text-center text-[15pt] font-bold my-2.5 tracking-wide">{t.title}</h2>
-
-      {/* ---- لایەنەکان ---- */}
-      <div className="grid grid-cols-2 gap-4 avoid-break">
-        <div className="border border-neutral-400 rounded p-2.5">
-          <p className="text-[10pt] font-bold bg-neutral-100 -m-2.5 mb-2 p-1.5 px-2.5 border-b border-neutral-300">{t.seller}</p>
-          <div className="space-y-1.5">
-            <L k={t.name} v={c.seller.name} />
-            <L k={t.phone} v={<span className="num">{c.seller.phone}</span>} />
-            <L k={t.address} v={c.seller.address} />
-          </div>
+      <section className="contract-section avoid-break">
+        <SectionTitle>{t.carInfo}</SectionTitle>
+        <div className="contract-form-grid">
+          <Line label={t.brand}>{c.car.brand}</Line>
+          <Line label={t.model}>{c.car.model}</Line>
+          <Line label={t.year}><span className="num">{c.car.year}</span></Line>
+          <Line label={t.color}>{c.car.color}</Line>
+          <Line label={t.km}><span className="num">{num(c.car.km || 0)}</span></Line>
+          <Line label={t.plate}><span className="num">{c.car.plate || '—'}</span></Line>
+          <Line label={t.body}>{c.car.bodyType || '—'}</Line>
+          <Line label={t.fuel}>{c.car.fuel || '—'}</Line>
+          <Line label={t.gear}>{c.car.transmission || '—'}</Line>
+          <Line label={t.engine}>{c.car.cylinders || '—'}</Line>
+          <Line label={t.origin}>{c.car.origin || '—'}</Line>
+          <Line label={t.keys}><span className="num">{c.car.keys || '—'}</span></Line>
+          <Line label={t.vin} className="contract-vin"><span className="num">{c.car.vin}</span></Line>
         </div>
-        <div className="border border-neutral-400 rounded p-2.5">
-          <p className="text-[10pt] font-bold bg-neutral-100 -m-2.5 mb-2 p-1.5 px-2.5 border-b border-neutral-300">{t.buyer}</p>
-          <div className="space-y-1.5">
-            <L k={t.name} v={c.buyer.name} />
-            <L k={t.phone} v={<span className="num">{c.buyer.phone}</span>} />
-            <L k={t.idNo} v={<span className="num">{c.buyer.idNumber}</span>} />
-            <L k={t.issuer} v={c.buyer.idIssuer} />
-            <L k={t.address} v={c.buyer.address} />
-          </div>
-        </div>
-      </div>
+      </section>
 
-      {/* ---- ئۆتۆمبێل ---- */}
-      <div className="mt-3 avoid-break">
-        <p className="text-[10.5pt] font-bold bg-neutral-100 border border-neutral-400 rounded-t px-2.5 py-1.5">{t.carInfo}</p>
-        <table className="w-full border-collapse border border-neutral-400 border-t-0 text-[10.5pt]">
-          <tbody>
-            <Tr a={[t.brand, c.car.brand]} b={[t.model, c.car.model]} c={[t.year, <span key="y" className="num">{c.car.year}</span>]} />
-            <Tr a={[t.color, c.car.color]} b={[t.km, <span key="k" className="num">{num(c.car.km || 0)}</span>]} c={[t.plate, <span key="p" className="num">{c.car.plate || '—'}</span>]} />
-            <Tr a={[t.body, c.car.bodyType || '—']} b={[t.fuel, c.car.fuel || '—']} c={[t.gear, c.car.transmission || '—']} />
-            <Tr a={[t.engine, c.car.cylinders || '—']} b={[t.origin, c.car.origin || '—']} c={[t.keys, c.car.keys ? <span key="kk" className="num">{c.car.keys}</span> : '—']} />
-            <tr>
-              <td className="border border-neutral-400 px-2 py-1.5 bg-neutral-50 text-neutral-700 w-[110px]">{t.vin}</td>
-              <td className="border border-neutral-400 px-2 py-1.5 font-bold tracking-[0.18em] text-[12pt]" colSpan={5} dir="ltr">
-                <span className="num">{c.car.vin}</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* ---- دۆخی جەستە ---- */}
-      <div className="mt-3 avoid-break">
-        <p className="text-[10.5pt] font-bold bg-neutral-100 border border-neutral-400 rounded-t px-2.5 py-1.5">{t.condition}</p>
-        <div className="border border-neutral-400 border-t-0 rounded-b px-2.5 py-2 text-[10.5pt] leading-6">
-          {issues.length === 0 ? (
-            <p>{t.allOriginal}</p>
-          ) : (
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              {issues.map((p) => (
-                <span key={p.key}>
-                  • {lang === 'ku' ? p.ku : PART_AR[p.key] || p.ku}:{' '}
-                  <b>{lang === 'ku' ? PART_STATES[c.car.body![p.key]].ku : STATE_AR[c.car.body![p.key]]}</b>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ---- پارە ---- */}
-      <div className="mt-3 avoid-break">
-        <table className="w-full border-collapse border border-neutral-400 text-[10.5pt]">
-          <tbody>
-            <tr>
-              <td className="border border-neutral-400 px-2 py-2 bg-neutral-50 text-neutral-700 w-[110px]">{t.price}</td>
-              <td className="border border-neutral-400 px-2 py-2 font-bold text-[13pt]"><span className="num">{money(c.price, c.currency)}</span></td>
-              <td className="border border-neutral-400 px-2 py-2 bg-neutral-50 text-neutral-700 w-[80px]">{t.inWords}</td>
-              <td className="border border-neutral-400 px-2 py-2">{words}</td>
-            </tr>
-            <tr>
-              <td className="border border-neutral-400 px-2 py-2 bg-neutral-50 text-neutral-700">{t.payment}</td>
-              <td className="border border-neutral-400 px-2 py-2 font-bold" colSpan={3}>
-                {c.payment === 'cash' ? (
-                  t.cash
-                ) : (
-                  <span>
-                    {t.inst} — {t.down}: <span className="num">{money(c.down, c.currency)}</span> · {t.rest}:{' '}
-                    <span className="num">{money(rest, c.currency)}</span> (<span className="num">{c.installments.length}</span>{' '}
-                    {lang === 'ku' ? 'قیست' : 'قسط'})
-                  </span>
-                )}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* ---- خشتەی قیست ---- */}
-      {c.payment === 'installment' && c.installments.length > 0 && (
-        <div className="mt-3 avoid-break">
-          <p className="text-[10.5pt] font-bold bg-neutral-100 border border-neutral-400 rounded-t px-2.5 py-1.5">{t.instTable}</p>
-          <table className="w-full border-collapse border border-neutral-400 border-t-0 text-[10pt]">
-            <thead>
-              <tr className="bg-neutral-50">
-                <th className="border border-neutral-400 px-2 py-1 w-10">{t.instNo}</th>
-                <th className="border border-neutral-400 px-2 py-1">{t.due}</th>
-                <th className="border border-neutral-400 px-2 py-1">{t.amount}</th>
-                <th className="border border-neutral-400 px-2 py-1 w-28">{t.sign}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {c.installments.map((i) => (
-                <tr key={i.no}>
-                  <td className="border border-neutral-400 px-2 py-1.5 text-center"><span className="num">{i.no}</span></td>
-                  <td className="border border-neutral-400 px-2 py-1.5 text-center"><span className="num">{fmtDateShort(i.dueDate)}</span></td>
-                  <td className="border border-neutral-400 px-2 py-1.5 text-center font-bold"><span className="num">{money(i.amount, c.currency)}</span></td>
-                  <td className="border border-neutral-400 px-2 py-1.5" />
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* ---- مەرجەکان ---- */}
-      <div className="mt-3 avoid-break">
-        <p className="text-[10.5pt] font-bold bg-neutral-100 border border-neutral-400 rounded-t px-2.5 py-1.5">{t.terms}</p>
-        <ol className="border border-neutral-400 border-t-0 rounded-b px-6 py-2 text-[10pt] leading-6 list-decimal space-y-0.5">
-          {(lang === 'ku' ? (c.terms?.length ? c.terms : s.terms) : s.termsAr || []).map((x, i) => (
-            <li key={i}>{x}</li>
+      <section className="contract-section contract-condition avoid-break">
+        <SectionTitle>{t.condition}</SectionTitle>
+        <div className="contract-condition-body">
+          {issues.length === 0 ? t.allOriginal : issues.map((p) => (
+            <span key={p.key} className="contract-condition-item">
+              <b>{lang === 'ku' ? p.ku : PART_AR[p.key] || p.ku}</b>
+              <span>{lang === 'ku' ? PART_STATES[c.car.body![p.key]].ku : STATE_AR[c.car.body![p.key]]}</span>
+            </span>
           ))}
-        </ol>
-      </div>
+          {c.car.bodyNote && <p className="contract-condition-note">{c.car.bodyNote}</p>}
+        </div>
+      </section>
 
-      {c.note && (
-        <p className="mt-2.5 text-[10pt] leading-6">
-          <b>{t.note}: </b>
-          {c.note}
-        </p>
+      <section className="contract-section contract-payment avoid-break">
+        <SectionTitle>{t.price} {c.payment === 'installment' ? `— ${t.inst}` : ''}</SectionTitle>
+        <div className="contract-payment-grid">
+          <div className="contract-price">
+            <span>{t.price}</span>
+            <strong className="num">{money(c.price, c.currency)}</strong>
+          </div>
+          <div className="contract-words"><b>{t.inWords}:</b> {words}</div>
+          <div className="contract-payment-detail">
+            {c.payment === 'cash' ? t.cash : (
+              <>
+                <span>{t.down}: <b className="num">{money(c.down, c.currency)}</b></span>
+                <span>{t.rest}: <b className="num">{money(rest, c.currency)}</b></span>
+                <span><b className="num">{c.installments.length}</b> {lang === 'ku' ? 'قیست' : 'قسط'}</span>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {c.payment === 'installment' && c.installments.length > 0 && (
+        <section className="contract-section avoid-break">
+          <SectionTitle>{t.instTable}</SectionTitle>
+          <table className="contract-installments">
+            <thead><tr><th>{t.instNo}</th><th>{t.due}</th><th>{t.amount}</th><th>{t.sign}</th></tr></thead>
+            <tbody>{c.installments.map((i) => (
+              <tr key={i.no}>
+                <td><span className="num">{i.no}</span></td>
+                <td><span className="num">{fmtDateShort(i.dueDate)}</span></td>
+                <td><b className="num">{money(i.amount, c.currency)}</b></td>
+                <td />
+              </tr>
+            ))}</tbody>
+          </table>
+        </section>
       )}
 
-      <p className="text-[9.5pt] text-neutral-600 mt-3 text-center">{t.footer}</p>
+      <section className="contract-terms avoid-break">
+        <div className="contract-terms-title">{t.terms}</div>
+        <ol>{terms.map((term, i) => <li key={i}>{term}</li>)}</ol>
+      </section>
 
-      {/* ---- واژوو و پەنجەمۆر ---- */}
-      <div className="grid grid-cols-2 gap-6 mt-4 avoid-break">
+      {c.note && <p className="contract-note avoid-break"><b>{t.note}:</b> {c.note}</p>}
+      <p className="contract-consent avoid-break">{t.footer}</p>
+
+      <section className="contract-signatures avoid-break">
         {[
           { role: t.seller, name: c.seller.name },
           { role: t.buyer, name: c.buyer.name },
-        ].map((p) => (
-          <div key={p.role} className="border border-neutral-400 rounded p-3">
-            <p className="text-[10pt] font-bold mb-1">{p.role}</p>
-            <p className="text-[10.5pt] mb-3">{p.name}</p>
-            <div className="flex items-end gap-3">
-              <div className="grow">
-                <div className="h-12 border-b border-neutral-500" />
-                <p className="text-[9pt] text-neutral-600 text-center mt-1">{t.signature}</p>
-              </div>
-              <div className="shrink-0">
-                <div className="w-[26mm] h-[26mm] border border-neutral-500 rounded-sm bg-neutral-50" />
-                <p className="text-[9pt] text-neutral-600 text-center mt-1">{t.fingerprint}</p>
-              </div>
-            </div>
+        ].map((party) => (
+          <div className="contract-sign" key={party.role}>
+            <div><b>{party.role}</b><span>{party.name}</span></div>
+            <div className="contract-sign-line"><span>{t.signature}</span></div>
+            <div className="contract-fingerprint"><span>{t.fingerprint}</span></div>
           </div>
         ))}
-      </div>
+      </section>
 
       {(c.witness1 || c.witness2) && (
-        <div className="grid grid-cols-2 gap-6 mt-3 avoid-break">
+        <section className="contract-witnesses avoid-break">
           {[
-            { l: t.w1, n: c.witness1 },
-            { l: t.w2, n: c.witness2 },
-          ]
-            .filter((x) => x.n)
-            .map((x) => (
-              <div key={x.l} className="text-[10pt]">
-                <p className="text-neutral-600">{x.l}</p>
-                <p className="font-bold border-b border-dotted border-neutral-400 pb-1 mt-1">{x.n}</p>
-                <div className="h-8 border-b border-neutral-500 mt-2" />
-                <p className="text-[9pt] text-neutral-600 text-center mt-1">{t.signature}</p>
-              </div>
-            ))}
-        </div>
+            { label: t.w1, name: c.witness1 },
+            { label: t.w2, name: c.witness2 },
+          ].filter((w) => w.name).map((w) => (
+            <Line key={w.label} label={w.label}>{w.name}</Line>
+          ))}
+        </section>
       )}
 
-      <p className="text-[8.5pt] text-neutral-500 text-center mt-3 pt-2 border-t border-neutral-300">
-        {t.copy} · <span className="num">{c.no}</span> · <span className="num">{fmtDateShort(c.date)}</span>
-      </p>
-    </div>
-  )
-}
-
-function Tr({ a, b, c }: { a: [string, React.ReactNode]; b: [string, React.ReactNode]; c: [string, React.ReactNode] }) {
-  return (
-    <tr>
-      {[a, b, c].map(([k, v], i) => (
-        <Fragment key={i}>
-          <td className="border border-neutral-400 px-2 py-1.5 bg-neutral-50 text-neutral-700 w-[90px]">{k}</td>
-          <td className="border border-neutral-400 px-2 py-1.5 font-bold">{v}</td>
-        </Fragment>
-      ))}
-    </tr>
+      <footer className="contract-footer">
+        <span>{[s.city, s.address].filter(Boolean).join(' — ')}</span>
+        <b className="num">{s.phone || '—'}</b>
+        <span>{t.copy} · <span className="num">{c.no}</span></span>
+      </footer>
+    </article>
   )
 }
