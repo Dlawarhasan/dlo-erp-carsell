@@ -71,22 +71,26 @@ export default function Ledger() {
 
   const wa = acc.phone ? normalizePhone(acc.phone) : ''
 
-  /* لە ئەپی دانراوی iOS (standalone) فەرمانی پرینت کار ناکات —
-     بۆیە هەمان لاپەڕە لە Safari دەکەینەوە، لەوێ Share → Print کاردەکات. */
-  const standalone =
-    typeof window !== 'undefined' &&
-    (window.matchMedia?.('(display-mode: standalone)').matches ||
-      (navigator as unknown as { standalone?: boolean }).standalone === true)
-  const iOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent)
+  const [pdfBusy, setPdfBusy] = useState(false)
 
-  const toPdf = () => {
-    if (standalone && iOS) {
-      const w = window.open(window.location.href, '_blank')
-      if (!w) say('تکایە ڕێگە بە کردنەوەی پەنجەرە بدە، یان لینکەکە لە Safari بکەرەوە', 'info')
-      else say('لە Safari کرایەوە — دوگمەی هاوبەشکردن ⤴ ← Print ← Save as PDF', 'info')
-      return
+  /** PDF لەناو خودی ئەپەکەدا دروست دەکرێت — بەبێ پەنجەرەی پرینت،
+      بۆیە لە ئەپی دانراوی ئایفۆنیش کاردەکات و خێرایە. */
+  const toPdf = async () => {
+    if (pdfBusy) return
+    setPdfBusy(true)
+    try {
+      const { downloadStatementPdf } = await import('../lib/statementPdf')
+      await downloadStatementPdf(acc, rows, view, sum, b, {
+        showroom: settings.showroomName,
+        phone: settings.phone,
+        address: [settings.city, settings.address].filter(Boolean).join(' — '),
+      })
+      say('فایلی PDF داگیرا')
+    } catch {
+      say('نەتوانرا PDF دروست بکرێت', 'bad')
+    } finally {
+      setPdfBusy(false)
     }
-    window.print()
   }
 
   return (
@@ -97,15 +101,13 @@ export default function Ledger() {
         back={() => nav('/debts')}
         action={
           <div className="flex gap-2">
-            <button onClick={toPdf} className="btn-brand !px-3.5 no-print" title="داگرتنی PDF">
-              <Download size={17} />
+            <button onClick={toPdf} disabled={pdfBusy} className="btn-brand !px-3.5 no-print" title="داگرتنی PDF">
+              {pdfBusy ? <Loader2 size={17} className="animate-spin" /> : <Download size={17} />}
               <span className="hidden sm:inline">PDF</span>
             </button>
-            {!standalone && (
-              <button onClick={() => window.print()} className="btn-ghost !px-3 no-print" title="پرینت">
-                <Printer size={17} />
-              </button>
-            )}
+            <button onClick={() => window.print()} className="btn-ghost !px-3 no-print" title="پرینت">
+              <Printer size={17} />
+            </button>
             {editable && (
               <button onClick={() => setEditAcc(true)} className="btn-ghost !px-3 no-print" title="گۆڕین">
                 <Pencil size={17} />
@@ -370,14 +372,6 @@ export default function Ledger() {
         </section>
 
         {acc.note && <p className="text-[13px] text-muted">تێبینی: {acc.note}</p>}
-
-        {standalone && iOS && (
-          <p className="text-[11px] text-muted text-center leading-5 no-print">
-            بۆ PDF: دوگمەی <b>PDF</b> لێبدە — لە Safari دەکرێتەوە، دواتر
-            <br />
-            هاوبەشکردن ⤴ ← <b>Print</b> ← <b>Save as PDF</b>
-          </p>
-        )}
 
         <p className="text-[11px] text-muted text-center pb-4">
           چاپکراوە لە <span className="num">{fmtDateShort(todayISO())}</span> · {settings.showroomName}
