@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ScanLine, Plus, Car, FileText, TrendingUp, AlertTriangle, Wallet, ArrowLeft, Clock, NotebookPen } from 'lucide-react'
 import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
+import { toAccounts, balanceOf } from '../lib/ledger'
 import { Stat } from '../components/ui'
 import { balances, carMoney, openInstallments, profitInRange } from '../lib/finance'
 import { fmtDateShort, money, num, todayISO } from '../lib/format'
@@ -29,22 +30,18 @@ export default function Dashboard() {
 
   /* دەفتەری قەرز — قەرزی پێش سیستەم */
   const debtSum = useMemo(() => {
-    const open = (debts || []).filter((d) => d.status !== 'closed')
-    const left = (d: (typeof open)[number]) =>
-      Math.max(0, (d.amount || 0) - (d.payments || []).reduce((s, p) => s + (p.amount || 0), 0))
-    const usd = (d: (typeof open)[number]) => {
-      const v = left(d)
-      return d.currency === 'USD' ? v : v / (d.rate || rate)
+    let inn = 0
+    let out = 0
+    let count = 0
+    for (const acc of toAccounts(debts)) {
+      const bal = balanceOf(acc)
+      const v = bal.USD + bal.IQD / (rate || 1)
+      if (Math.abs(v) < 0.01) continue
+      count++
+      if (v > 0) inn += v
+      else out += -v
     }
-    const inn = open.filter((d) => d.kind === 'receivable').reduce((s, d) => s + usd(d), 0)
-    const out = open.filter((d) => d.kind === 'payable').reduce((s, d) => s + usd(d), 0)
-    const today = todayISO()
-    const late = open.filter((d) => {
-      if (left(d) <= 0) return false
-      if (d.installments?.length) return d.installments.some((i) => i.paid < i.amount && i.dueDate < today)
-      return !!d.dueDate && d.dueDate < today
-    }).length
-    return { inn, out, late, count: open.filter((d) => left(d) > 0).length }
+    return { inn, out, count, late: 0 }
   }, [debts, rate])
   const overdue = dues.filter((d) => d.overdue)
   const soon = dues.filter((d) => !d.overdue && d.daysLeft <= 14).slice(0, 4)

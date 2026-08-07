@@ -1,149 +1,94 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
-  Plus,
-  NotebookPen,
-  ArrowDownLeft,
-  ArrowUpRight,
-  Phone,
-  Trash2,
-  CalendarClock,
-  Check,
-  Wallet,
-  Loader2,
-  AlertTriangle,
-  CircleCheckBig,
+  Plus, NotebookPen, ArrowDownLeft, ArrowUpRight, Phone, ChevronLeft,
+  CircleCheckBig, Loader2, Check,
 } from 'lucide-react'
 import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
-import { Field, MoneyInput, Picker, Segmented, SearchBar, Empty, Sheet, Stat, Switch, useConfirm } from '../components/ui'
-import { addMonths, fmtDateShort, fold, money, num, todayISO, uid } from '../lib/format'
-import { accountBalance } from '../lib/finance'
-import { fx } from '../lib/feedback'
-import type { Currency, Debt, DebtKind, DebtPayment, Installment, Tx } from '../lib/types'
-
-/* ═════════════ یارمەتیدەرەکان ═════════════ */
-
-export const debtPaid = (d: Debt) => (d.payments || []).reduce((s, p) => s + (p.amount || 0), 0)
-export const debtLeft = (d: Debt) => Math.max(0, (d.amount || 0) - debtPaid(d))
-
-/** کۆی ماوە بە دراوێکی دیاریکراو */
-function totalLeft(list: Debt[], to: Currency, rate: number) {
-  return list.reduce((s, d) => {
-    const left = debtLeft(d)
-    if (!left) return s
-    if (d.currency === to) return s + left
-    const r = d.rate || rate
-    return s + (to === 'USD' ? left / r : left * r)
-  }, 0)
-}
-
-const isOverdue = (d: Debt) => {
-  if (d.status === 'closed' || !debtLeft(d)) return false
-  const today = todayISO()
-  if (d.installments?.length) return d.installments.some((i) => i.paid < i.amount && i.dueDate < today)
-  return !!d.dueDate && d.dueDate < today
-}
-
-const KIND_KU: Record<DebtKind, string> = {
-  receivable: 'خەڵک قەرزارمە',
-  payable: 'من قەرزارم',
-}
-
-const REASONS = [
-  'فرۆشتنی ئۆتۆمبێل (پێش سیستەم)',
-  'قەرزی کەسی',
-  'سلف',
-  'کڕینی ئۆتۆمبێل',
-  'چاککردنەوە و تێچوو',
-  'کرێ',
-  'شتی تر',
-]
-
-/* ═════════════ لاپەڕە ═════════════ */
+import { Field, Picker, Segmented, SearchBar, Empty, Sheet, Stat, useConfirm } from '../components/ui'
+import { fmtDateShort, fold, money, todayISO, uid } from '../lib/format'
+import {
+  toAccounts, balanceOf, isEmpty, lastMove, blankAccount, nowTime,
+  type Account,
+} from '../lib/ledger'
+import type { Currency } from '../lib/types'
 
 export default function Debts() {
-  const { debts, customers, settings, save, remove, log, say, can, user } = useApp()
-  const { ask, node } = useConfirm()
+  const nav = useNavigate()
+  const { debts, customers, settings, save, log, say, can, user } = useApp()
+  const { node } = useConfirm()
 
   const [q, setQ] = useState('')
-  const [tab, setTab] = useState<'all' | 'receivable' | 'payable'>('all')
-  const [onlyOpen, setOnlyOpen] = useState(true)
+  const [tab, setTab] = useState<'all' | 'owe' | 'owed' | 'clear'>('all')
   const [cur, setCur] = useState<Currency>('USD')
-  const [edit, setEdit] = useState<Debt | null>(null)
-  const [payFor, setPayFor] = useState<Debt | null>(null)
+  const [edit, setEdit] = useState<Account | null>(null)
 
   const editable = can('money.edit')
-  const deletable = can('contract.delete')
+  const accounts = useMemo(() => toAccounts(debts), [debts])
 
   const list = useMemo(() => {
     const needle = fold(q)
-    return (debts || [])
-      .filter((d) => (tab === 'all' ? true : d.kind === tab))
-      .filter((d) => (onlyOpen ? d.status !== 'closed' && debtLeft(d) > 0 : true))
-      .filter((d) =>
-        !needle
-          ? true
-          : fold(`${d.personName} ${d.phone || ''} ${d.reason || ''} ${d.carInfo || ''} ${d.note || ''}`).includes(needle),
+    return accounts
+      .map((a) => ({ a, b: balanceOf(a) }))
+      .filter(({ b }) =>
+        tab === 'all' ? true : tab === 'owe' ? b.USD + b.IQD > 0 : tab === 'owed' ? b.USD + b.IQD < 0 : isEmpty(b),
       )
-      .sort((a, b) => {
-        const ao = isOverdue(a) ? 0 : 1
-        const bo = isOverdue(b) ? 0 : 1
-        if (ao !== bo) return ao - bo
-        return (b.date || '').localeCompare(a.date || '')
+      .filter(({ a }) => (!needle ? true : fold(`${a.name} ${a.phone || ''} ${a.note || ''}`).includes(needle)))
+      .sort((x, y) => {
+        const ax = Math.abs(x.b.USD) + Math.abs(x.b.IQD)
+        const ay = Math.abs(y.b.USD) + Math.abs(y.b.IQD)
+        if (ax !== ay) return ay - ax
+        return x.a.name.localeCompare(y.a.name)
       })
-  }, [debts, q, tab, onlyOpen])
+  }, [accounts, q, tab])
 
-  const open = (debts || []).filter((d) => d.status !== 'closed' && debtLeft(d) > 0)
-  const inSum = totalLeft(open.filter((d) => d.kind === 'receivable'), cur, settings.usdRate)
-  const outSum = totalLeft(open.filter((d) => d.kind === 'payable'), cur, settings.usdRate)
-  const overdue = open.filter(isOverdue)
-  /** قەرز هەیە بەڵام هەموویان تەواو بوون */
-  const allDone = (debts || []).length > 0 && open.length === 0 && !q
+  /* کۆی گشتی — هەر دراوێک بە جیا، وەک صەراف */
+  const totals = useMemo(() => {
+    const t = { oweUSD: 0, oweIQD: 0, owedUSD: 0, owedIQD: 0 }
+    for (const a of accounts) {
+      const b = balanceOf(a)
+      if (b.USD > 0) t.oweUSD += b.USD
+      else t.owedUSD += -b.USD
+      if (b.IQD > 0) t.oweIQD += b.IQD
+      else t.owedIQD += -b.IQD
+    }
+    return t
+  }, [accounts])
 
-  /* ── سڕینەوە ── */
-  const del = async (d: Debt) => {
-    if (d.payments?.length) return say('ئەم قەرزە پارەدانی تۆمارکراوی هەیە؛ بۆ پاراستنی حسابات ناتوانرێت بسڕدرێتەوە', 'bad')
-    if (!(await ask(`قەرزی «${d.personName}» بسڕدرێتەوە؟ ئەم کردارە ناگەڕێتەوە.`))) return
-    if (await remove('debts', d.id, d.personName)) say('سڕایەوە', 'info')
-  }
-
-  /* ── داخستن/کردنەوە بە دەست ── */
-  const toggleClose = async (d: Debt) => {
-    const next: Debt = { ...d, status: d.status === 'closed' ? 'open' : 'closed', updatedAt: Date.now() }
-    await save('debts', next)
-    await log(next.status === 'closed' ? 'داخستنی قەرز' : 'کردنەوەی قەرز', 'debts', d.id, d.personName)
-    say(next.status === 'closed' ? 'وەک تەواوبوو نیشانە کرا' : 'کرایەوە')
-  }
+  const owe = cur === 'USD' ? totals.oweUSD : totals.oweIQD
+  const owed = cur === 'USD' ? totals.owedUSD : totals.owedIQD
+  const m = (n: number) => money(n, cur)
 
   return (
     <>
       <PageHead
         title="دەفتەری قەرز"
-        sub="قەرزە کۆنەکانی پێش سیستەم"
+        sub="حسابی هەر کەسێک بە تەواوی"
         action={
           editable && (
-            <button onClick={() => setEdit(blank(user?.uid, user?.name))} className="btn-brand">
+            <button onClick={() => setEdit(blankAccount(user?.uid, user?.name))} className="btn-brand">
               <Plus size={17} />
-              <span className="hidden sm:inline">قەرزی نوێ</span>
+              <span className="hidden sm:inline">حسابی نوێ</span>
             </button>
           )
         }
       />
 
-      <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-4">
+      <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-4">
         {/* ── پوختە ── */}
         <div className="grid grid-cols-2 gap-3">
           <Stat
             label="خەڵک قەرزارمە"
-            value={<span className="num">{money(inSum, cur)}</span>}
-            sub={`${open.filter((d) => d.kind === 'receivable').length} کەس`}
+            value={<span className="num">{m(owe)}</span>}
+            sub={`${accounts.filter((a) => balanceOf(a).USD + balanceOf(a).IQD > 0).length} کەس`}
             tone="ok"
             icon={<ArrowDownLeft size={17} />}
           />
           <Stat
             label="من قەرزارم"
-            value={<span className="num">{money(outSum, cur)}</span>}
-            sub={`${open.filter((d) => d.kind === 'payable').length} کەس`}
+            value={<span className="num">{m(owed)}</span>}
+            sub={`${accounts.filter((a) => balanceOf(a).USD + balanceOf(a).IQD < 0).length} کەس`}
             tone="bad"
             icon={<ArrowUpRight size={17} />}
           />
@@ -152,9 +97,7 @@ export default function Debts() {
         <div className="card p-3.5 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[13px] text-muted">جیاوازی</p>
-            <p className={`text-lg font-bold num ${inSum - outSum >= 0 ? 'text-ok' : 'text-bad'}`}>
-              {money(inSum - outSum, cur)}
-            </p>
+            <p className={`text-lg font-bold num ${owe - owed >= 0 ? 'text-ok' : 'text-bad'}`}>{m(owe - owed)}</p>
           </div>
           <div className="w-32 shrink-0">
             <Segmented
@@ -169,306 +112,175 @@ export default function Debts() {
           </div>
         </div>
 
-        {overdue.length > 0 && (
-          <div className="card p-3.5 border-warn/40 bg-warn/10 flex items-start gap-2.5">
-            <AlertTriangle size={18} className="text-warn shrink-0 mt-0.5" />
-            <p className="text-sm leading-6">
-              <b className="num">{overdue.length}</b> قەرز بەرواری دیاریکراوی تێپەڕاندووە
-            </p>
-          </div>
-        )}
-
         {/* ── پاڵاوتن ── */}
         <div className="space-y-3">
-          <SearchBar value={q} onChange={setQ} placeholder="بگەڕێ بە ناو، ژمارە، هۆکار..." />
+          <SearchBar value={q} onChange={setQ} placeholder="بگەڕێ بە ناو یان ژمارە..." />
           <Segmented
             value={tab}
             onChange={setTab}
             options={[
               { v: 'all' as const, label: 'هەموو' },
-              { v: 'receivable' as const, label: 'بۆم' },
-              { v: 'payable' as const, label: 'لەسەرم' },
+              { v: 'owe' as const, label: 'قەرزارمن' },
+              { v: 'owed' as const, label: 'قەرزارم' },
+              { v: 'clear' as const, label: 'پاک' },
             ]}
           />
-          <label className="flex items-center gap-2.5 text-sm text-muted cursor-pointer w-fit">
-            <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} className="w-4 h-4 accent-brand" />
-            تەنها ئەوانەی ماونەتەوە
-          </label>
         </div>
 
         {/* ── لیست ── */}
         {list.length === 0 ? (
           <Empty
-            icon={allDone ? <CircleCheckBig size={26} /> : <NotebookPen size={26} />}
-            title={
-              (debts || []).length === 0
-                ? 'دەفتەرەکە بەتاڵە'
-                : allDone
-                  ? 'هیچ قەرزێک نەماوە 🎉'
-                  : 'هیچ نەدۆزرایەوە'
-            }
+            icon={<NotebookPen size={26} />}
+            title={accounts.length === 0 ? 'دەفتەرەکە بەتاڵە' : 'هیچ نەدۆزرایەوە'}
             sub={
-              (debts || []).length === 0
-                ? 'قەرزە کۆنەکانی پێش سیستەم لێرە تۆمار بکە — ئەوانەی خەڵک بۆت هەیانە و ئەوانەی لەسەرتن.'
-                : allDone
-                  ? 'هەموو قەرزەکان تەواو بوون. بۆ بینینی ئەوانەی کۆتاییان هات، نیشانەی «تەنها ئەوانەی ماونەتەوە» لابدە.'
-                  : 'گەڕانەکەت یان پاڵاوتنەکە بگۆڕە.'
+              accounts.length === 0
+                ? 'بۆ هەر کەسێک حسابێک دروست بکە — دواتر هەموو وەرگرتن و دانی پارە بە بەروار و کاتژمێرەوە تۆمار دەکەیت.'
+                : 'گەڕان یان پاڵاوتنەکە بگۆڕە.'
             }
             action={
               editable && (
-                <button onClick={() => setEdit(blank(user?.uid, user?.name))} className="btn-brand">
-                  <Plus size={17} /> {(debts || []).length === 0 ? 'یەکەم قەرز' : 'قەرزی نوێ'}
+                <button onClick={() => setEdit(blankAccount(user?.uid, user?.name))} className="btn-brand">
+                  <Plus size={17} /> حسابی نوێ
                 </button>
               )
             }
           />
         ) : (
           <div className="space-y-2.5">
-            {list.map((d) => (
-              <DebtRow
-                key={d.id}
-                d={d}
-                editable={editable}
-                deletable={deletable}
-                onEdit={() => setEdit(d)}
-                onPay={() => setPayFor(d)}
-                onDelete={() => del(d)}
-                onToggle={() => toggleClose(d)}
-              />
-            ))}
+            {list.map(({ a, b }) => {
+              const last = lastMove(a)
+              const zero = isEmpty(b)
+              const pos = b.USD + b.IQD > 0
+              return (
+                <button
+                  key={a.id}
+                  onClick={() => nav(`/debts/${a.id}`)}
+                  className="card w-full p-3.5 flex items-center gap-3 text-start hover:bg-surface2 transition"
+                >
+                  <span
+                    className={`w-10 h-10 rounded-xl grid place-items-center shrink-0 ${
+                      zero ? 'bg-surface2 text-muted' : pos ? 'bg-ok/15 text-ok' : 'bg-bad/15 text-bad'
+                    }`}
+                  >
+                    {zero ? <CircleCheckBig size={18} /> : pos ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
+                  </span>
+
+                  <span className="grow min-w-0">
+                    <b className="block truncate">{a.name || 'بێ ناو'}</b>
+                    <span className="block text-xs text-muted mt-0.5 truncate">
+                      {a.phone && (
+                        <>
+                          <Phone size={11} className="inline align-[-1px]" /> <span className="num">{a.phone}</span> ·{' '}
+                        </>
+                      )}
+                      {last ? (
+                        <>
+                          دوایین جوڵە <span className="num">{fmtDateShort(last.date)}</span>
+                        </>
+                      ) : (
+                        'هێشتا هیچ جوڵەیەک نییە'
+                      )}
+                    </span>
+                  </span>
+
+                  <span className="text-end shrink-0">
+                    {zero ? (
+                      <span className="text-[13px] text-muted">پاک</span>
+                    ) : (
+                      <>
+                        {Math.abs(b.USD) >= 0.01 && (
+                          <span className={`block font-bold num ${b.USD > 0 ? 'text-ok' : 'text-bad'}`}>
+                            {money(Math.abs(b.USD), 'USD')}
+                          </span>
+                        )}
+                        {Math.abs(b.IQD) >= 0.01 && (
+                          <span className={`block font-bold num text-[13px] ${b.IQD > 0 ? 'text-ok' : 'text-bad'}`}>
+                            {money(Math.abs(b.IQD), 'IQD')}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </span>
+                  <ChevronLeft size={17} className="text-muted shrink-0" />
+                </button>
+              )
+            })}
           </div>
         )}
       </div>
 
-      {edit && <DebtForm debt={edit} customers={customers} onClose={() => setEdit(null)} />}
-      {payFor && <PayForm debt={payFor} onClose={() => setPayFor(null)} />}
+      {edit && (
+        <AccountForm
+          acc={edit}
+          customers={customers}
+          onClose={() => setEdit(null)}
+          onSaved={(a) => {
+            setEdit(null)
+            nav(`/debts/${a.id}`)
+          }}
+          save={save}
+          log={log}
+          say={say}
+          rate={settings.usdRate}
+        />
+      )}
       {node}
     </>
   )
 }
 
-function blank(uidStr?: string, name?: string): Debt {
-  return {
-    id: uid('d'),
-    kind: 'receivable',
-    personName: '',
-    amount: 0,
-    currency: 'USD',
-    rate: 0,
-    date: todayISO(),
-    payments: [],
-    status: 'open',
-    createdAt: Date.now(),
-    createdBy: uidStr,
-    createdByName: name,
-  }
-}
+/* ═════════════ فۆرمی حساب ═════════════ */
 
-/* ═════════════ ڕیزێکی لیست ═════════════ */
-
-function DebtRow({
-  d,
-  editable,
-  deletable,
-  onEdit,
-  onPay,
-  onDelete,
-  onToggle,
+export function AccountForm({
+  acc, customers, onClose, onSaved, save, log, say, rate,
 }: {
-  d: Debt
-  editable: boolean
-  deletable: boolean
-  onEdit: () => void
-  onPay: () => void
-  onDelete: () => void
-  onToggle: () => void
+  acc: Account
+  customers: { id: string; name: string; phone?: string }[]
+  onClose: () => void
+  onSaved: (a: Account) => void
+  save: (coll: 'debts', obj: Account) => Promise<void>
+  log: (a: string, e: string, id?: string, d?: string) => Promise<void>
+  say: (m: string, k?: 'ok' | 'bad' | 'info') => void
+  rate: number
 }) {
-  const [open, setOpen] = useState(false)
-  const left = debtLeft(d)
-  const paid = debtPaid(d)
-  const done = d.status === 'closed' || left <= 0
-  const over = isOverdue(d)
-  const inbound = d.kind === 'receivable'
-  const pct = d.amount > 0 ? Math.min(100, (paid / d.amount) * 100) : 0
-
-  return (
-    <div className={`card overflow-hidden ${over ? 'border-warn/45' : ''} ${done ? 'opacity-70' : ''}`}>
-      <button onClick={() => setOpen(!open)} className="w-full text-start p-3.5 flex items-center gap-3">
-        <span
-          className={`w-10 h-10 rounded-xl grid place-items-center shrink-0 ${
-            done ? 'bg-surface2 text-muted' : inbound ? 'bg-ok/15 text-ok' : 'bg-bad/15 text-bad'
-          }`}
-        >
-          {done ? <CircleCheckBig size={18} /> : inbound ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
-        </span>
-
-        <span className="grow min-w-0">
-          <span className="flex items-center gap-2">
-            <b className="truncate">{d.personName || 'بێ ناو'}</b>
-            {over && <span className="text-[10px] bg-warn/20 text-warn px-1.5 py-0.5 rounded-md shrink-0">دواکەوتوو</span>}
-            {done && <span className="text-[10px] bg-surface2 text-muted px-1.5 py-0.5 rounded-md shrink-0">تەواو</span>}
-          </span>
-          <span className="block text-xs text-muted mt-0.5 truncate">
-            {d.reason || KIND_KU[d.kind]} · <span className="num">{fmtDateShort(d.date)}</span>
-          </span>
-        </span>
-
-        <span className="text-end shrink-0">
-          <span className={`block font-bold num ${done ? 'text-muted' : inbound ? 'text-ok' : 'text-bad'}`}>
-            {money(left || d.amount, d.currency)}
-          </span>
-          {paid > 0 && !done && <span className="block text-[11px] text-muted num">دراوە {money(paid, d.currency)}</span>}
-        </span>
-      </button>
-
-      {paid > 0 && !done && (
-        <div className="h-1 bg-surface2 mx-3.5 rounded-full overflow-hidden">
-          <div className="h-full bg-brand rounded-full transition-all" style={{ width: `${pct}%` }} />
-        </div>
-      )}
-
-      {open && (
-        <div className="px-3.5 pb-3.5 pt-3 border-t border-line mt-3 space-y-3">
-          <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-[13px]">
-            <Row k="جۆر" v={KIND_KU[d.kind]} />
-            <Row k="بڕی سەرەتایی" v={<span className="num">{money(d.amount, d.currency)}</span>} />
-            {paid > 0 && <Row k="دراوە" v={<span className="num text-ok">{money(paid, d.currency)}</span>} />}
-            {!!left && <Row k="ماوە" v={<span className="num font-bold">{money(left, d.currency)}</span>} />}
-            {d.dueDate && <Row k="بەرواری دیاریکراو" v={<span className={`num ${over ? 'text-warn' : ''}`}>{fmtDateShort(d.dueDate)}</span>} />}
-            {d.phone && (
-              <Row
-                k="ژمارە"
-                v={
-                  <a href={`tel:${d.phone}`} className="num text-brand inline-flex items-center gap-1">
-                    <Phone size={12} /> {d.phone}
-                  </a>
-                }
-              />
-            )}
-            {d.carInfo && <Row k="ئۆتۆمبێل" v={d.carInfo} />}
-            {d.note && <Row k="تێبینی" v={d.note} full />}
-          </dl>
-
-          {/* قیستەکان */}
-          {!!d.installments?.length && (
-            <div>
-              <p className="text-xs text-muted mb-1.5">خشتەی قیست</p>
-              <div className="space-y-1">
-                {d.installments.map((i) => {
-                  const late = i.paid < i.amount && i.dueDate < todayISO()
-                  return (
-                    <div
-                      key={i.no}
-                      className={`flex items-center gap-2 text-[13px] rounded-lg px-2.5 py-1.5 ${
-                        i.paid >= i.amount ? 'bg-ok/10 text-ok' : late ? 'bg-warn/10 text-warn' : 'bg-surface2'
-                      }`}
-                    >
-                      <span className="num w-5">{i.no}</span>
-                      <span className="num grow">{fmtDateShort(i.dueDate)}</span>
-                      <span className="num">{money(i.amount, d.currency)}</span>
-                      {i.paid >= i.amount && <Check size={14} />}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* پارەدانەکان */}
-          {!!d.payments?.length && (
-            <div>
-              <p className="text-xs text-muted mb-1.5">پارەدانەکان</p>
-              <div className="space-y-1">
-                {[...d.payments]
-                  .sort((a, b) => b.at - a.at)
-                  .map((p) => (
-                    <div key={p.id} className="flex items-center gap-2 text-[13px] bg-surface2 rounded-lg px-2.5 py-1.5">
-                      <span className="num grow">{fmtDateShort(p.date)}</span>
-                      {p.toCashbox && <Wallet size={13} className="text-muted" />}
-                      <span className="num font-medium">{money(p.amount, d.currency)}</span>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )}
-
-          {editable && (
-            <div className="flex flex-wrap gap-2 pt-1">
-              {!done && (
-                <button onClick={onPay} className="btn-brand !py-1.5 !px-3 text-[13px]">
-                  <Wallet size={15} /> تۆمارکردنی پارەدان
-                </button>
-              )}
-              <button onClick={onEdit} className="btn-ghost !py-1.5 !px-3 text-[13px]">
-                گۆڕین
-              </button>
-              <button onClick={onToggle} className="btn-ghost !py-1.5 !px-3 text-[13px]">
-                {done ? 'کردنەوە' : 'وەک تەواوبوو'}
-              </button>
-              {deletable && <button onClick={onDelete} className="btn-ghost !py-1.5 !px-3 text-[13px] text-bad"><Trash2 size={15} /></button>}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function Row({ k, v, full }: { k: string; v: React.ReactNode; full?: boolean }) {
-  return (
-    <div className={full ? 'col-span-2' : ''}>
-      <dt className="text-muted text-[11px]">{k}</dt>
-      <dd className="mt-0.5">{v}</dd>
-    </div>
-  )
-}
-
-/* ═════════════ فۆرمی قەرز ═════════════ */
-
-function DebtForm({ debt, customers, onClose }: { debt: Debt; customers: { id: string; name: string; phone?: string }[]; onClose: () => void }) {
-  const { save, log, say, settings } = useApp()
-  const [d, setD] = useState<Debt>({ ...debt, rate: debt.rate || settings.usdRate })
+  const [a, setA] = useState<Account>(acc)
   const [busy, setBusy] = useState(false)
-  const [useInst, setUseInst] = useState(!!debt.installments?.length)
-  const [instCount, setInstCount] = useState(debt.installments?.length || 6)
-  const [instStart, setInstStart] = useState(debt.installments?.[0]?.dueDate || addMonths(todayISO(), 1))
-
-  const set = <K extends keyof Debt>(k: K, v: Debt[K]) => setD((p) => ({ ...p, [k]: v }))
-  const isNew = !debt.personName
-
-  const names = customers.map((c) => c.name)
+  /* بڕی سەرەتایی — تەنها بۆ حسابی نوێ */
+  const isNew = !acc.name
+  const [opening, setOpening] = useState(0)
+  const [openKind, setOpenKind] = useState<'give' | 'take'>('give')
+  const [openCur, setOpenCur] = useState<Currency>('USD')
 
   const pickCustomer = (name: string) => {
     const c = customers.find((x) => x.name === name)
-    setD((p) => ({ ...p, personName: name, customerId: c?.id, phone: c?.phone || p.phone }))
-  }
-
-  const buildInstallments = (): Installment[] | undefined => {
-    if (!useInst || instCount < 1 || d.amount <= 0) return undefined
-    const each = Math.round((d.amount / instCount) * 100) / 100
-    return Array.from({ length: instCount }, (_, i) => ({
-      no: i + 1,
-      dueDate: addMonths(instStart, i),
-      amount: i === instCount - 1 ? Math.round((d.amount - each * (instCount - 1)) * 100) / 100 : each,
-      paid: 0,
-    }))
+    setA((p) => ({ ...p, name, customerId: c?.id, phone: c?.phone || p.phone }))
   }
 
   const submit = async () => {
-    if (!d.personName.trim()) return say('ناوی کەسەکە بنووسە', 'bad')
-    if (!(d.amount > 0)) return say('بڕی پارە بنووسە', 'bad')
+    if (!a.name.trim()) return say('ناوی کەسەکە بنووسە', 'bad')
     setBusy(true)
     try {
-      const next: Debt = {
-        ...d,
-        personName: d.personName.trim(),
-        installments: buildInstallments(),
-        updatedAt: Date.now(),
+      const next: Account = { ...a, name: a.name.trim(), updatedAt: Date.now() }
+      if (isNew && opening > 0) {
+        next.entries = [
+          {
+            id: uid('e'),
+            date: todayISO(),
+            time: nowTime(),
+            kind: openKind,
+            amount: opening,
+            currency: openCur,
+            rate,
+            cash: false,
+            note: 'باڵانسی سەرەتایی',
+            at: Date.now(),
+          },
+        ]
       }
       await save('debts', next)
-      await log(isNew ? 'زیادکردنی قەرز' : 'گۆڕینی قەرز', 'debts', next.id, `${next.personName} — ${money(next.amount, next.currency)}`)
-      say(isNew ? 'قەرزەکە تۆمار کرا' : 'پاشەکەوت کرا')
-      onClose()
+      await log(isNew ? 'دروستکردنی حساب' : 'گۆڕینی حساب', 'debts', next.id, next.name)
+      say(isNew ? 'حسابەکە دروستکرا' : 'پاشەکەوت کرا')
+      onSaved(next)
     } catch {
       say('نەتوانرا پاشەکەوت بکرێت', 'bad')
     } finally {
@@ -480,7 +292,7 @@ function DebtForm({ debt, customers, onClose }: { debt: Debt; customers: { id: s
     <Sheet
       open
       onClose={onClose}
-      title={isNew ? 'قەرزی نوێ' : 'گۆڕینی قەرز'}
+      title={isNew ? 'حسابی نوێ' : 'گۆڕینی حساب'}
       footer={
         <>
           <button onClick={onClose} className="btn-ghost">
@@ -494,269 +306,74 @@ function DebtForm({ debt, customers, onClose }: { debt: Debt; customers: { id: s
       }
     >
       <div className="space-y-4">
-        <Field label="جۆری قەرز">
-          <Segmented
-            value={d.kind}
-            onChange={(v) => set('kind', v)}
-            options={[
-              { v: 'receivable' as DebtKind, label: 'خەڵک قەرزارمە' },
-              { v: 'payable' as DebtKind, label: 'من قەرزارم' },
-            ]}
+        <Field label="ناوی کەس" hint="لە کریارە تۆمارکراوەکان هەڵبژێرە یان ناوێکی نوێ بنووسە">
+          <Picker
+            value={a.name}
+            onChange={pickCustomer}
+            options={customers.map((c) => c.name)}
+            allowCustom
+            placeholder="ناو بنووسە یان هەڵبژێرە"
           />
         </Field>
 
-        <Field label="ناوی کەس" hint="لە کریارە تۆمارکراوەکان هەڵبژێرە یان ناوێکی نوێ بنووسە">
-          <Picker value={d.personName} onChange={pickCustomer} options={names} allowCustom placeholder="ناو بنووسە یان هەڵبژێرە" />
+        <Field label="ژمارەی تەلەفۆن">
+          <input
+            dir="ltr"
+            inputMode="tel"
+            value={a.phone || ''}
+            onChange={(e) => setA((p) => ({ ...p, phone: e.target.value }))}
+            className="field num text-start"
+            placeholder="0750..."
+          />
         </Field>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="ژمارەی تەلەفۆن">
-            <input
-              dir="ltr"
-              inputMode="tel"
-              value={d.phone || ''}
-              onChange={(e) => set('phone', e.target.value)}
-              className="field num text-start"
-              placeholder="0750..."
-            />
-          </Field>
-          <Field label="بەرواری قەرزەکە" hint="بەرواری ڕاستەقینەی کۆن">
-            <input type="date" value={d.date} onChange={(e) => set('date', e.target.value)} className="field num" />
-          </Field>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="بڕی پارە">
-            <MoneyInput value={d.amount} onChange={(n) => set('amount', n)} />
-          </Field>
-          <Field label="دراو">
+        {isNew && (
+          <div className="card p-3.5 space-y-3">
+            <p className="text-[13px] font-medium">باڵانسی سەرەتایی</p>
+            <p className="text-xs text-muted leading-5">
+              ئەگەر ئەم کەسە پێشتر قەرزاری تۆ بووە (یان تۆ قەرزاری ئەو بوویت)، بڕەکە لێرە بنووسە.
+              ئەگەرنا بەتاڵی بهێڵەوە و دواتر جوڵەکان تۆمار بکە.
+            </p>
             <Segmented
-              value={d.currency}
-              onChange={(v) => set('currency', v)}
+              value={openKind}
+              onChange={setOpenKind}
               options={[
-                { v: 'USD' as Currency, label: 'دۆلار $' },
-                { v: 'IQD' as Currency, label: 'دینار' },
+                { v: 'give' as const, label: 'ئەو قەرزارمە' },
+                { v: 'take' as const, label: 'من قەرزارم' },
               ]}
             />
-          </Field>
-        </div>
-
-        <Field label="هۆکار">
-          <Picker value={d.reason || ''} onChange={(v) => set('reason', v)} options={REASONS} allowCustom placeholder="هەڵبژێرە یان بنووسە" />
-        </Field>
-
-        <Field label="ئۆتۆمبێلی پەیوەندیدار" hint="ئارەزوومەندانە — نموونە: تویۆتا کەمری ٢٠١٨ سپی">
-          <input value={d.carInfo || ''} onChange={(e) => set('carInfo', e.target.value)} className="field" placeholder="..." />
-        </Field>
-
-        {/* قیست */}
-        <div className="card p-3.5 space-y-3">
-          <Switch
-            checked={useInst}
-            onChange={setUseInst}
-            label="خشتەی قیست"
-            hint="ئەگەر کوژاوە بێت، پارەدانی ئازادە — هەر کاتێک پارە دێت تۆماری دەکەیت"
-            icon={<CalendarClock size={17} />}
-          />
-          {useInst && (
             <div className="grid grid-cols-2 gap-3">
-              <Field label="ژمارەی قیست">
-                <MoneyInput value={instCount} onChange={(n) => setInstCount(Math.max(1, Math.min(120, Math.round(n))))} />
+              <Field label="بڕ">
+                <input
+                  dir="ltr"
+                  inputMode="decimal"
+                  value={opening || ''}
+                  onChange={(e) => setOpening(Number(e.target.value.replace(/[^\d.]/g, '')) || 0)}
+                  className="field num text-start"
+                  placeholder="0"
+                />
               </Field>
-              <Field label="یەکەم قیست">
-                <input type="date" value={instStart} onChange={(e) => setInstStart(e.target.value)} className="field num" />
+              <Field label="دراو">
+                <Segmented
+                  value={openCur}
+                  onChange={setOpenCur}
+                  options={[
+                    { v: 'USD' as Currency, label: '$' },
+                    { v: 'IQD' as Currency, label: 'د.ع' },
+                  ]}
+                />
               </Field>
-              {d.amount > 0 && instCount > 0 && (
-                <p className="col-span-2 text-xs text-muted">
-                  هەر قیستێک نزیکەی <b className="num">{money(d.amount / instCount, d.currency)}</b>
-                </p>
-              )}
             </div>
-          )}
-        </div>
-
-        {!useInst && (
-          <Field label="بەرواری دیاریکراو بۆ دانەوە" hint="ئارەزوومەندانە — ئاگادارت دەکاتەوە ئەگەر تێپەڕی">
-            <input type="date" value={d.dueDate || ''} onChange={(e) => set('dueDate', e.target.value)} className="field num" />
-          </Field>
+          </div>
         )}
 
         <Field label="تێبینی">
-          <textarea value={d.note || ''} onChange={(e) => set('note', e.target.value)} rows={2} className="field resize-none" />
-        </Field>
-      </div>
-    </Sheet>
-  )
-}
-
-/* ═════════════ فۆرمی پارەدان ═════════════ */
-
-function PayForm({ debt, onClose }: { debt: Debt; onClose: () => void }) {
-  const { txs, commit, log, say, settings, user } = useApp()
-  const left = debtLeft(debt)
-  const [amount, setAmount] = useState(left)
-  const [date, setDate] = useState(todayISO())
-  const [toCashbox, setToCashbox] = useState(true)
-  const [account, setAccount] = useState<'cash' | 'bank'>('cash')
-  const [note, setNote] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  const inbound = debt.kind === 'receivable'
-
-  const submit = async () => {
-    if (!(amount > 0)) return say('بڕی پارە بنووسە', 'bad')
-    if (amount > left + 0.01) return say('بڕەکە لە ماوەکە زیاترە', 'bad')
-    if (toCashbox && !inbound) {
-      const tolerance = debt.currency === 'USD' ? 0.011 : 1
-      if (amount > accountBalance(txs, account, debt.currency) + tolerance) return say(`باڵانسی ${account === 'cash' ? 'سندوق' : 'بانک'} بەس نییە`, 'bad')
-    }
-    setBusy(true)
-    try {
-      const pid = uid('dp')
-      let txId: string | undefined
-
-      // ١) ئەگەر بچێتە سندوق — مامەڵەیەک دروست دەکەین
-      let tx: Tx | undefined
-      if (toCashbox) {
-        txId = uid('tx')
-        tx = {
-          id: txId,
-          date,
-          kind: inbound ? 'in' : 'out',
-          amount,
-          currency: debt.currency,
-          rate: debt.rate || settings.usdRate,
-          account,
-          category: inbound ? 'debt_in' : 'debt_out',
-          title: `${inbound ? 'وەرگرتنی' : 'دانەوەی'} قەرزی کۆن — ${debt.personName}`,
-          customerId: debt.customerId,
-          note: note || debt.reason,
-          createdAt: Date.now(),
-          createdBy: user?.uid,
-        }
-      }
-
-      // ٢) پارەدانەکە
-      const pay: DebtPayment = {
-        id: pid,
-        date,
-        amount,
-        toCashbox,
-        account: toCashbox ? account : undefined,
-        txId,
-        note: note || undefined,
-        at: Date.now(),
-        by: user?.uid,
-        byName: user?.name,
-      }
-
-      // ٣) داخستنی قیستەکان بە ڕیزبەندی
-      let rest = amount
-      const insts = debt.installments?.map((i) => {
-        if (rest <= 0) return i
-        const need = i.amount - i.paid
-        if (need <= 0) return i
-        const put = Math.min(need, rest)
-        rest -= put
-        return { ...i, paid: i.paid + put, paidDate: i.paid + put >= i.amount ? date : i.paidDate }
-      })
-
-      const payments = [...(debt.payments || []), pay]
-      const totalPaid = payments.reduce((s, p) => s + p.amount, 0)
-      const next: Debt = {
-        ...debt,
-        payments,
-        installments: insts,
-        status: totalPaid >= debt.amount - 0.01 ? 'closed' : 'open',
-        updatedAt: Date.now(),
-      }
-
-      await commit([
-        ...(tx ? [{ kind: 'put' as const, coll: 'txs' as const, value: tx }] : []),
-        { kind: 'put' as const, coll: 'debts' as const, value: next },
-      ])
-      await log('پارەدانی قەرز', 'debts', debt.id, `${debt.personName} — ${money(amount, debt.currency)}`)
-
-      if (next.status === 'closed') {
-        fx('money')
-        say('قەرزەکە تەواو بوو 🎉')
-      } else {
-        say('پارەدانەکە تۆمار کرا')
-      }
-      onClose()
-    } catch {
-      say('نەتوانرا تۆمار بکرێت', 'bad')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <Sheet
-      open
-      onClose={onClose}
-      title={inbound ? 'وەرگرتنی پارە' : 'دانەوەی پارە'}
-      footer={
-        <>
-          <button onClick={onClose} className="btn-ghost">
-            پاشگەزبوونەوە
-          </button>
-          <button onClick={submit} disabled={busy} className="btn-brand">
-            {busy ? <Loader2 size={17} className="animate-spin" /> : <Check size={17} />}
-            تۆمارکردن
-          </button>
-        </>
-      }
-    >
-      <div className="space-y-4">
-        <div className="card p-3.5 bg-surface2">
-          <p className="text-[13px] text-muted">{debt.personName}</p>
-          <p className="text-lg font-bold num mt-0.5">ماوە: {money(left, debt.currency)}</p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="بڕی پارە">
-            <MoneyInput value={amount} onChange={setAmount} />
-          </Field>
-          <Field label="بەروار">
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="field num" />
-          </Field>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {[0.25, 0.5, 1].map((f) => (
-            <button key={f} type="button" onClick={() => setAmount(Math.round(left * f * 100) / 100)} className="btn-ghost !py-1.5 !px-3 text-[13px]">
-              {f === 1 ? 'هەمووی' : `${f * 100}٪`} <span className="num">({num(Math.round(left * f))})</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="card p-3.5 space-y-3">
-          <Switch
-            checked={toCashbox}
-            onChange={setToCashbox}
-            label="بچێتە سندوقەوە"
-            hint={
-              inbound
-                ? 'وەک داهاتێک لە حسابات تۆمار دەکرێت و باڵانسی سندوق زیاد دەکات'
-                : 'وەک خەرجییەک لە حسابات تۆمار دەکرێت و باڵانسی سندوق کەم دەکات'
-            }
-            icon={<Wallet size={17} />}
+          <textarea
+            value={a.note || ''}
+            onChange={(e) => setA((p) => ({ ...p, note: e.target.value }))}
+            rows={2}
+            className="field resize-none"
           />
-          {toCashbox && (
-            <Segmented
-              value={account}
-              onChange={setAccount}
-              options={[
-                { v: 'cash' as const, label: 'کاش' },
-                { v: 'bank' as const, label: 'بانک' },
-              ]}
-            />
-          )}
-        </div>
-
-        <Field label="تێبینی">
-          <input value={note} onChange={(e) => setNote(e.target.value)} className="field" placeholder="ئارەزوومەندانە" />
         </Field>
       </div>
     </Sheet>

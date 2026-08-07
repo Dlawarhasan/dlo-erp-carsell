@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { getRepo, setPhotoStore, type SessionUser, type CollName, type RepoWrite } from '../lib/repo'
-import type { AppUser, AuditEntry, Car, Contract, Customer, Debt, Exchanger, Hawala, Partner, Settings, Tx, Role } from '../lib/types'
+import type { AppUser, AuditEntry, Car, Contract, Customer, RawAccount, Exchanger, Hawala, Partner, Settings, Tx, Role } from '../lib/types'
 import { DEFAULT_TERMS, DEFAULT_TERMS_AR } from '../lib/catalog'
 import { uid } from '../lib/format'
 import { fx } from '../lib/feedback'
@@ -49,7 +49,7 @@ interface AppState {
   customers: Customer[]
   contracts: Contract[]
   txs: Tx[]
-  debts: Debt[]
+  debts: RawAccount[]
   partners: Partner[]
   exchangers: Exchanger[]
   hawalas: Hawala[]

@@ -6,11 +6,12 @@ import {
 } from 'lucide-react'
 import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
+import { toAccounts, balanceOf } from '../lib/ledger'
 import { NotebookPen } from 'lucide-react'
 import { Empty, Field, MoneyInput, Picker, Segmented, Sheet, Stat, useConfirm } from '../components/ui'
 import { accountBalance, balances, carMoney, cashBalance, openInstallments, profitInRange } from '../lib/finance'
 import { EXPENSE_CATEGORIES, TX_CATEGORY_KU } from '../lib/catalog'
-import { fmtDateShort, money, num, todayISO, uid } from '../lib/format'
+import { convert, fmtDateShort, money, num, todayISO, uid } from '../lib/format'
 import type { Currency, Tx, TxCategory } from '../lib/types'
 
 const daysAgo = (n: number) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)
@@ -52,20 +53,18 @@ export default function Accounting() {
 
   /* پوختەی دەفتەری قەرزی کۆن */
   const oldDebt = useMemo(() => {
-    const open = (debts || []).filter((d) => d.status !== 'closed')
-    const conv = (d: (typeof open)[number]) => {
-      const left = Math.max(0, (d.amount || 0) - (d.payments || []).reduce((a, p) => a + (p.amount || 0), 0))
-      if (!left) return 0
-      if (d.currency === cur) return left
-      const r = d.rate || settings.usdRate
-      return cur === 'USD' ? left / r : left * r
+    let inn = 0
+    let out = 0
+    let count = 0
+    for (const acc of toAccounts(debts)) {
+      const bal = balanceOf(acc)
+      const v = convert(bal.USD, 'USD', cur, settings.usdRate) + convert(bal.IQD, 'IQD', cur, settings.usdRate)
+      if (Math.abs(v) < 0.01) continue
+      count++
+      if (v > 0) inn += v
+      else out += -v
     }
-    const rows = open.filter((d) => conv(d) > 0)
-    return {
-      inn: rows.filter((d) => d.kind === 'receivable').reduce((s, d) => s + conv(d), 0),
-      out: rows.filter((d) => d.kind === 'payable').reduce((s, d) => s + conv(d), 0),
-      count: rows.length,
-    }
+    return { inn, out, count }
   }, [debts, cur, settings.usdRate])
 
   const soldCars = useMemo(

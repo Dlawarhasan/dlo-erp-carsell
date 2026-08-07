@@ -303,3 +303,49 @@ export interface Debt {
   createdBy?: string
   createdByName?: string
 }
+
+/* ═══════════ حسابی کەسی (دەفتەری قەرزی نوێ) ═══════════ */
+
+/** `give` = پارە/قەرزم دایێ (باڵانس زیاد) · `take` = پارەم لێ وەرگرت (باڵانس کەم) */
+export type EntryKind = 'give' | 'take'
+
+export interface LedgerEntry {
+  id: string
+  /** YYYY-MM-DD */
+  date: string
+  /** HH:MM — کاتی ڕاستەقینەی مامەڵەکە */
+  time: string
+  kind: EntryKind
+  amount: number
+  currency: Currency
+  rate: number
+  /** ئایا لە سندوقی سیستەمەوە هاتووە/چووە؟ */
+  cash: boolean
+  account?: 'cash' | 'bank'
+  txId?: string
+  note?: string
+  at: number
+  by?: string
+  byName?: string
+}
+
+export interface Account {
+  id: string
+  /** نیشانەی وەشان — ٢ = حسابی نوێ */
+  v: 2
+  name: string
+  customerId?: string
+  phone?: string
+  note?: string
+  entries: LedgerEntry[]
+  archived?: boolean
+  /** ئەگەر چەند حسابێکی کۆن تێکەڵ کرابن */
+  mergedIds?: string[]
+  createdAt: number
+  updatedAt?: number
+  createdBy?: string
+  createdByName?: string
+}
+
+/** هەر شتێک لە کۆلێکشنی `debts` — کۆن یان نوێ */
+export type RawAccount = Account | Debt

@@ -18,6 +18,7 @@ const Customers = lazy(() => import('./pages/Customers'))
 const Accounting = lazy(() => import('./pages/Accounting'))
 const Reports = lazy(() => import('./pages/Reports'))
 const Debts = lazy(() => import('./pages/Debts'))
+const Ledger = lazy(() => import('./pages/Ledger'))
 const Partners = lazy(() => import('./pages/Partners'))
 const Exchangers = lazy(() => import('./pages/Exchangers'))
 const Hawalas = lazy(() => import('./pages/Hawalas'))
@@ -67,6 +68,7 @@ export default function App() {
           <Route path="/accounting" element={<Accounting />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/debts" element={<Debts />} />
+          <Route path="/debts/:id" element={<Ledger />} />
           <Route path="/partners" element={<Partners />} />
           <Route path="/exchangers" element={<Exchangers />} />
           <Route path="/hawalas" element={<Hawalas />} />

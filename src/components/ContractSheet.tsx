@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { Contract, Settings } from '../lib/types'
 import { fmtDateShort, money, num } from '../lib/format'
 import { amountWordsAr, amountWordsKu } from '../lib/numwords'
@@ -133,6 +133,60 @@ function AutoMark() {
   )
 }
 
+/** بەرزی ناوەوەی A4 بە پیکسل — (297mm − ٢×10mm مارجن) لە ٩٦dpi */
+const PAGE_H = ((297 - 20) / 25.4) * 96
+
+/**
+ * دڵنیادەبێتەوە لەوەی عەقدەکە هەمیشە لە *یەک* لاپەڕەدا جێدەبێتەوە.
+ * بەرزی ناوەڕۆک دەپێوێت و ئەگەر لە لاپەڕەکە تێپەڕی، بە ڕێژەیەکی
+ * وردەوە بچووکی دەکاتەوە. ئەگەر جێبووەوە، هیچ ناگۆڕێت.
+ */
+function useOnePage(dep: unknown) {
+  const inner = useRef<HTMLDivElement>(null)
+  const [fit, setFit] = useState({ k: 1, h: 0 })
+
+  useLayoutEffect(() => {
+    const el = inner.current
+    const paper = el?.parentElement?.parentElement
+    if (!el || !paper) return
+
+    let raf = 0
+    const measure = () => {
+      const cs = getComputedStyle(paper)
+      const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom)
+      const avail = PAGE_H - pad - 4
+      /* transform کاریگەری لەسەر scrollHeight نییە، بۆیە پێوانەکە هەمیشە خاوێنە */
+      const h = el.scrollHeight
+      if (!h) return
+      const k = h > avail ? Math.max(0.5, avail / h) : 1
+      setFit((p) => (Math.abs(p.k - k) > 0.002 || Math.abs(p.h - h) > 1 ? { k, h } : p))
+    }
+
+    const schedule = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(measure)
+    }
+
+    schedule()
+    const ro = new ResizeObserver(schedule)
+    ro.observe(el)
+    /* دوای بارکردنی فۆنت و وێنەکان دووبارە دەپێوێت */
+    const late = setTimeout(schedule, 700)
+    document.fonts?.ready.then(schedule).catch(() => {})
+    window.addEventListener('beforeprint', measure)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(late)
+      ro.disconnect()
+      window.removeEventListener('beforeprint', measure)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dep])
+
+  return { inner, ...fit }
+}
+
 function SectionTitle({ children }: { children: ReactNode }) {
   return <div className="contract-section-title"><span>{children}</span></div>
 }
@@ -166,8 +220,12 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
   const terms = lang === 'ku' ? (c.terms?.length ? c.terms : s.terms) : s.termsAr || []
   const showroom = lang === 'ku' ? s.showroomName : s.showroomNameAr || s.showroomName
 
+  const { inner, k, h } = useOnePage(`${c.id}|${lang}|${terms.length}|${c.installments.length}`)
+
   return (
     <article className="print-sheet contract-paper bg-white text-black font-doc mx-auto shadow-card print:shadow-none" dir="rtl">
+     <div className="contract-fit" style={k < 1 ? { height: Math.ceil(h * k) } : undefined}>
+      <div ref={inner} className="contract-fit-in" style={k < 1 ? { transform: `scale(${k})` } : undefined}>
       <header className="contract-head">
         <div className="contract-logo" dir="ltr">
           {s.logo ? <img src={s.logo} alt="" /> : <AutoMark />}
@@ -320,6 +378,8 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
           <span>بۆ دروستکردنی ئەپلیکەیشن و سیستەمی داتابەیس پەیوەندیم پێوە بکە.</span>
         </a>
       </footer>
+      </div>
+     </div>
     </article>
   )
 }

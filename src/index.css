@@ -191,8 +191,10 @@
   --contract-paper: #fffdf8;
   --contract-tint: #f6f0e4;
   --contract-line: #dce4ed;
-  width: min(210mm, 100%);
-  min-height: 297mm;
+  /* ٢٠٢mm − (٢×٦mm پادینگ) = ١٩٠mm — هەمان پانی ناوەوەی پرینت
+     (A4 ٢١٠mm − ٢×١٠mm مارجنی @page)، بۆیە پێشبینین و پرینت وەک یەک ڕەندەر دەبن. */
+  width: min(202mm, 100%);
+  min-height: 285mm;
   padding: 5.5mm 6mm;
   position: relative;
   font-family: Speda, 'Noto Naskh Arabic', 'Times New Roman', serif;
@@ -652,4 +654,23 @@
 }
 .print-only {
   display: none;
+}
+
+
+/* ── دڵنیابوونەوە لەوەی عەقدەکە لە یەک لاپەڕەدا جێدەبێتەوە ── */
+.contract-fit { overflow: hidden; }
+.contract-fit-in { transform-origin: top center; }
+
+@media print {
+  .contract-paper {
+    width: 100% !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: 0 !important;
+  }
+  /* پادینگی دەرەوە لاببە، ئەگەرنا لاپەڕەی بەتاڵی دووەم دروست دەبێت */
+  body :has(> .print-area),
+  body :has(.print-area) { padding: 0 !important; margin: 0 !important; gap: 0 !important; }
+  .print-area { padding: 0 !important; margin: 0 !important; overflow: visible !important; }
 }

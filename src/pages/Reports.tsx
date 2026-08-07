@@ -7,7 +7,8 @@ import { carMoney, cashBalance, exchangerBalance, profitInRange } from '../lib/f
 import { convert, fmtDateShort, money, todayISO } from '../lib/format'
 import { downloadFile, toCsv } from '../lib/exportHtml'
 import { useApp } from '../store/app'
-import type { Currency, Debt, DebtKind } from '../lib/types'
+import { toAccounts, balanceOf } from '../lib/ledger'
+import type { Currency, DebtKind } from '../lib/types'
 
 type Tab = 'report' | 'statement'
 type StatementKind = 'customer' | 'partner' | 'exchanger' | 'debt'
@@ -25,11 +26,6 @@ const monthStart = () => {
   d.setDate(1)
   return d.toISOString().slice(0, 10)
 }
-
-const debtPersonKey = (d: Pick<Debt, 'customerId' | 'personName' | 'phone'>) =>
-  `${d.customerId || ''}|${d.personName.trim().toLocaleLowerCase()}|${d.phone || ''}`
-
-const debtLeft = (d: Debt) => Math.max(0, d.amount - (d.payments || []).reduce((sum, p) => sum + p.amount, 0))
 
 export default function Reports() {
   const { cars, contracts, customers, partners, exchangers, debts, txs, settings, can } = useApp()
@@ -64,9 +60,14 @@ export default function Reports() {
     if (statementKind === 'customer') return customers.map((x) => ({ id: x.id, label: `${x.name}${x.phone ? ` — ${x.phone}` : ''}` }))
     if (statementKind === 'partner') return partners.map((x) => ({ id: x.id, label: x.name }))
     if (statementKind === 'debt') {
-      const people = new Map<string, string>()
-      debts.filter((d) => d.kind === debtKind).forEach((d) => people.set(debtPersonKey(d), `${d.personName}${d.phone ? ` — ${d.phone}` : ''}`))
-      return [...people].map(([id, label]) => ({ id, label }))
+      /* حسابەکان — ئاراستە بەپێی باڵانسی ئێستا دیاری دەکرێت */
+      return toAccounts(debts)
+        .filter((a) => {
+          const b = balanceOf(a)
+          const v = b.USD + b.IQD
+          return debtKind === 'receivable' ? v > 0 : v < 0
+        })
+        .map((a) => ({ id: a.id, label: `${a.name}${a.phone ? ` — ${a.phone}` : ''}` }))
     }
     return exchangers.map((x) => ({ id: x.id, label: x.name }))
   }, [customers, debtKind, debts, exchangers, partners, statementKind])
@@ -124,18 +125,18 @@ export default function Reports() {
     }
 
     if (statementKind === 'debt') {
-      const personDebts = debts.filter((d) => d.kind === debtKind && debtPersonKey(d) === selectedId)
-      const rows: StatementRow[] = personDebts.flatMap((d) => [
-        ...(inRange(d.date) ? [{
-          id: `debt_${d.id}`, date: d.date, title: `قەرزی سەرەتایی${d.reason ? ` — ${d.reason}` : ''}`,
-          note: d.note, amount: atRate(d.amount, d.currency, d.rate), direction: 'increase' as const,
-        }] : []),
-        ...(d.payments || []).filter((p) => inRange(p.date)).map((p) => ({
-          id: `payment_${d.id}_${p.id}`, date: p.date, title: 'پارەدان / وەرگرتنی قەرز',
-          note: p.note, amount: atRate(p.amount, d.currency, d.rate), direction: 'decrease' as const,
-        })),
-      ])
-      const balance = personDebts.reduce((sum, d) => sum + atRate(debtLeft(d), d.currency, d.rate), 0)
+      const acc = toAccounts(debts).find((a) => a.id === selectedId)
+      const entries = acc ? acc.entries.filter((e) => inRange(e.date)) : []
+      const rows: StatementRow[] = entries.map((e) => ({
+        id: e.id,
+        date: e.date,
+        title: e.kind === 'give' ? 'پارە/قەرز دراوە' : 'پارە وەرگیراوە',
+        note: [e.time, e.note].filter(Boolean).join(' · '),
+        amount: atRate(e.amount, e.currency, e.rate),
+        direction: e.kind === 'give' ? ('increase' as const) : ('decrease' as const),
+      }))
+      const bal = acc ? balanceOf(acc) : { USD: 0, IQD: 0 }
+      const balance = Math.abs(atRate(bal.USD, 'USD') + atRate(bal.IQD, 'IQD'))
       return {
         name: pick.label,
         rows: rows.sort((a, b) => b.date.localeCompare(a.date)),
