@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-  ArrowDownLeft, ArrowUpRight, Phone, MessageCircle, Download, Pencil,
+  ArrowDownLeft, ArrowUpRight, Phone, MessageCircle, Download, Printer, Pencil,
   Trash2, Wallet, Loader2, Check, Clock,
 } from 'lucide-react'
 import { useApp } from '../store/app'
@@ -71,6 +71,24 @@ export default function Ledger() {
 
   const wa = acc.phone ? normalizePhone(acc.phone) : ''
 
+  /* لە ئەپی دانراوی iOS (standalone) فەرمانی پرینت کار ناکات —
+     بۆیە هەمان لاپەڕە لە Safari دەکەینەوە، لەوێ Share → Print کاردەکات. */
+  const standalone =
+    typeof window !== 'undefined' &&
+    (window.matchMedia?.('(display-mode: standalone)').matches ||
+      (navigator as unknown as { standalone?: boolean }).standalone === true)
+  const iOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent)
+
+  const toPdf = () => {
+    if (standalone && iOS) {
+      const w = window.open(window.location.href, '_blank')
+      if (!w) say('تکایە ڕێگە بە کردنەوەی پەنجەرە بدە، یان لینکەکە لە Safari بکەرەوە', 'info')
+      else say('لە Safari کرایەوە — دوگمەی هاوبەشکردن ⤴ ← Print ← Save as PDF', 'info')
+      return
+    }
+    window.print()
+  }
+
   return (
     <>
       <PageHead
@@ -79,10 +97,15 @@ export default function Ledger() {
         back={() => nav('/debts')}
         action={
           <div className="flex gap-2">
-            <button onClick={() => window.print()} className="btn-brand !px-3.5 no-print" title="داگرتنی PDF">
+            <button onClick={toPdf} className="btn-brand !px-3.5 no-print" title="داگرتنی PDF">
               <Download size={17} />
               <span className="hidden sm:inline">PDF</span>
             </button>
+            {!standalone && (
+              <button onClick={() => window.print()} className="btn-ghost !px-3 no-print" title="پرینت">
+                <Printer size={17} />
+              </button>
+            )}
             {editable && (
               <button onClick={() => setEditAcc(true)} className="btn-ghost !px-3 no-print" title="گۆڕین">
                 <Pencil size={17} />
@@ -347,6 +370,14 @@ export default function Ledger() {
         </section>
 
         {acc.note && <p className="text-[13px] text-muted">تێبینی: {acc.note}</p>}
+
+        {standalone && iOS && (
+          <p className="text-[11px] text-muted text-center leading-5 no-print">
+            بۆ PDF: دوگمەی <b>PDF</b> لێبدە — لە Safari دەکرێتەوە، دواتر
+            <br />
+            هاوبەشکردن ⤴ ← <b>Print</b> ← <b>Save as PDF</b>
+          </p>
+        )}
 
         <p className="text-[11px] text-muted text-center pb-4">
           چاپکراوە لە <span className="num">{fmtDateShort(todayISO())}</span> · {settings.showroomName}
