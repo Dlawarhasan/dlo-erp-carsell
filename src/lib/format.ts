@@ -58,9 +58,55 @@ export function cleanVin(s: string) {
   return (s || '')
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, '')
-    .replace(/I/g, '1')
-    .replace(/O/g, '0')
-    .replace(/Q/g, '0')
+}
+
+/**
+ * VINـی ڕاستەقینە لە دەرئەنجامی بارکۆد دەردەهێنێت.
+ * I/O/Q بە مەبەستی لەبنکردنی هەڵەی OCR ناگۆڕدرێن؛ ئەوە دەتوانێت VINـی هەڵە دروست بکات.
+ */
+export function strictVinCandidates(raw: string): string[] {
+  // بارکۆدی VIN بە شێوەیەکی ستاندارد تەنها یەک token ـی ١٧ پیتە.
+  // بەشکردنی token ـێکی درێژ بۆ ١٧ پیت مەکە؛ ئەو کارە دەتوانێت ژمارەی ساختە دروست بکات.
+  const tokens = (raw || '').toUpperCase().split(/[\s|,;:./\\_-]+/).filter(Boolean)
+  const found = new Set<string>()
+  for (const token of tokens) {
+    if (VIN_RE.test(token)) found.add(token)
+  }
+  return [...found]
+}
+
+/**
+ * پێشنیاری OCR ـەکان. تەنها بۆ پیشاندانە، نەک تۆمارکردنی خۆکار.
+ * OCR زۆرجار I/O/Q دەبینێت؛ لێرە تەنها بۆ پێشنیار بە 1/0 دەگۆڕدرێن.
+ */
+export function ocrVinCandidates(raw: string): string[] {
+  const found = new Set<string>()
+  const addCandidate = (value: string) => {
+    if (VIN_RE.test(value)) found.add(value)
+  }
+
+  // OCR ـی ڕیزی یەکەم وێنەیەک دەگەڕێنێتەوە. تەنها ئەو ڕیزە وەربگرە
+  // کە خۆی تەواو ١٧ پیتە؛ بڕینی ١٧ پیت لە ناو دەقێکی درێژ هۆی VIN ـی هەڵەیە.
+  for (const line of (raw || '').toUpperCase().split(/\r?\n/)) {
+    const pieces = line.split(/[^A-Z0-9]+/).filter(Boolean)
+    for (const piece of pieces) {
+      const candidate = piece.replace(/I/g, '1').replace(/[OQ]/g, '0')
+      addCandidate(candidate)
+
+      // هەندێک جار OCR لە کۆتایی VIN ـی ئەمریکی یەک پیت لە ناوی عەرەبیی
+      // تەنیشتی دەگرێت. تەنها ئەگەر لە ١٨ پیتدا بە لابردنی یەک پیت، یەک VIN ـی
+      // تاک و check-digit ـی ڕاست ماوە، بە پێشنیار زیادیدەکەین. ئەمە بڕینی هەڕەمەکی نییە.
+      if (candidate.length === 18 && '12345'.includes(candidate[0])) {
+        const repaired = new Set<string>()
+        for (let i = 0; i < candidate.length; i++) {
+          const withoutOne = candidate.slice(0, i) + candidate.slice(i + 1)
+          if (VIN_RE.test(withoutOne) && vinChecksumOk(withoutOne)) repaired.add(withoutOne)
+        }
+        if (repaired.size === 1) addCandidate([...repaired][0])
+      }
+    }
+  }
+  return [...found].slice(0, 3)
 }
 
 const VIN_VALUES: Record<string, number> = {

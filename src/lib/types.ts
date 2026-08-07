@@ -83,6 +83,12 @@ export interface Installment {
   paidDate?: string
 }
 
+/** بڕی وەرگیراوی ڕاستەقینە لە کاتی فرۆشتن، بە هەر یەک لە دراوەکان */
+export interface CurrencyPayment {
+  currency: Currency
+  amount: number
+}
+
 export interface ContractParty {
   name: string
   phone?: string
@@ -107,6 +113,8 @@ export interface Contract {
   payment: 'cash' | 'installment'
   down: number
   installments: Installment[]
+  /** بۆ فرۆشتنی نەقدی دوو دراو؛ کۆی بەهاکەیان بە نرخەکەی عەقد دەبێت یەکسانی price بێت */
+  cashPayments?: CurrencyPayment[]
   terms: string[]
   note?: string
   witness1?: string
@@ -130,6 +138,13 @@ export type TxCategory =
   | 'partner'
   | 'debt_in'
   | 'debt_out'
+  | 'exchange_transfer'
+  | 'exchange_return'
+  | 'cash_exchange_out'
+  | 'cash_exchange_in'
+  | 'contract_refund'
+  | 'hawala'
+  | 'hawala_cancel'
   | 'other'
 
 export interface Tx {
@@ -137,14 +152,22 @@ export interface Tx {
   date: string
   kind: 'in' | 'out'
   amount: number
+  /** کرێی حەواڵە؛ لە amount ـدا هەژمارکراوە، بەڵام بۆ ڕاپۆرتی وەرگر جیا دەخرێتەوە */
+  fee?: number
   currency: Currency
   rate: number
-  account: 'cash' | 'bank'
+  /** شوێنی پارە: سەراف تەنها بۆ جوڵەی ناوخۆی سەرافە و باڵانسی کاش/بانک ناگۆڕێت */
+  account: 'cash' | 'bank' | 'exchanger'
   category: TxCategory
   title: string
   carId?: string
   contractId?: string
   partnerId?: string
+  /** سەرافێکی پەیوەندیدار، بۆ گواستنەوە و حەواڵە */
+  exchangerId?: string
+  hawalaId?: string
+  /** هەمان ناسنامە بۆ هەردوو جوڵەی ئیکسچێنجی دینار/دۆلار */
+  cashExchangeId?: string
   customerId?: string
   note?: string
   createdAt: number
@@ -157,6 +180,38 @@ export interface Partner {
   phone?: string
   note?: string
   createdAt: number
+}
+
+/** سەرافێک کە پارەی پێشانگا لەلای خەزن دەکرێت */
+export interface Exchanger {
+  id: string
+  name: string
+  phone?: string
+  note?: string
+  createdAt: number
+}
+
+/** حەواڵەی دەرچوو لە ڕێگەی سەرافەوە */
+export interface Hawala {
+  id: string
+  exchangerId: string
+  recipientType: 'partner' | 'customer' | 'other'
+  recipientName: string
+  recipientPhone?: string
+  partnerId?: string
+  customerId?: string
+  amount: number
+  fee: number
+  currency: Currency
+  rate: number
+  date: string
+  reference?: string
+  note?: string
+  status: 'sent' | 'cancelled'
+  txId: string
+  cancelTxId?: string
+  createdAt: number
+  createdBy?: string
 }
 
 export interface AppUser {

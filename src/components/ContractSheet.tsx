@@ -28,7 +28,7 @@ const T = {
     vin: 'ژمارەی شاسی (VIN)',
     km: 'کیلۆمەتر',
     plate: 'ژمارەی پلێت',
-    body: 'شێواز',
+    body: 'جۆری ئۆتۆمبێل',
     fuel: 'سووتەمەنی',
     gear: 'گێڕ',
     engine: 'ماتۆڕ',
@@ -39,6 +39,8 @@ const T = {
     inWords: 'بە نووسین',
     payment: 'شێوازی پارەدان',
     cash: 'نەقد — بە تەواوی وەرگیرا',
+    received: 'بڕی وەرگیراو',
+    rate: 'نرخی دراو',
     inst: 'بە قیست',
     down: 'پێشەکی',
     rest: 'بەرماوە',
@@ -87,6 +89,8 @@ const T = {
     inWords: 'كتابةً',
     payment: 'طريقة الدفع',
     cash: 'نقداً — استلم كاملاً',
+    received: 'المبلغ المستلم',
+    rate: 'سعر الصرف',
     inst: 'بالتقسيط',
     down: 'الدفعة المقدمة',
     rest: 'المتبقي',
@@ -157,6 +161,7 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
   const t = T[lang]
   const issues = BODY_PARTS.filter((p) => (c.car.body || {})[p.key])
   const rest = c.price - (c.down || 0)
+  const cashPayments = (c.cashPayments || []).filter((p) => p.amount > 0)
   const words = lang === 'ku' ? amountWordsKu(c.price, c.currency) : amountWordsAr(c.price, c.currency)
   const terms = lang === 'ku' ? (c.terms?.length ? c.terms : s.terms) : s.termsAr || []
   const showroom = lang === 'ku' ? s.showroomName : s.showroomNameAr || s.showroomName
@@ -237,7 +242,13 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
           </div>
           <div className="contract-words"><b>{t.inWords}:</b> {words}</div>
           <div className="contract-payment-detail">
-            {c.payment === 'cash' ? t.cash : (
+            {c.payment === 'cash' ? (
+              <>
+                <span>{t.cash}</span>
+                {cashPayments.length > 0 && <span>{t.received}: <b className="num">{cashPayments.map((p) => money(p.amount, p.currency)).join(' + ')}</b></span>}
+                {cashPayments.length > 1 && <span>{t.rate}: <b className="num">1 $ = {money(c.rate, 'IQD')}</b></span>}
+              </>
+            ) : (
               <>
                 <span>{t.down}: <b className="num">{money(c.down, c.currency)}</b></span>
                 <span>{t.rest}: <b className="num">{money(rest, c.currency)}</b></span>

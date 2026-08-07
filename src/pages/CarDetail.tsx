@@ -41,10 +41,19 @@ export default function CarDetail() {
   const cur = car.buyCurrency || 'USD'
 
   const del = async () => {
+    if (contracts.some((c) => c.carId === car.id) || txs.some((t) => t.carId === car.id)) {
+      return say('ئەم ئۆتۆمبێلە عەقد یان جوڵەی پارەی هەیە؛ بۆ پاراستنی حسابات ناتوانرێت بسڕدرێتەوە', 'bad')
+    }
     if (!(await ask(`دڵنیایت لە سڕینەوەی ${car.brand} ${car.model}؟ هەموو زانیارییەکانی لەناودەچێت.`))) return
-    await remove('cars', car.id, `${car.brand} ${car.model} — ${car.vin}`)
-    say('ئۆتۆمبێلەکە سڕایەوە')
-    nav('/cars')
+    if (await remove('cars', car.id, `${car.brand} ${car.model} — ${car.vin}`)) {
+      say('ئۆتۆمبێلەکە سڕایەوە')
+      nav('/cars')
+    }
+  }
+
+  const delCost = async (t: (typeof costs)[number]) => {
+    if (!(await ask(`سڕینەوەی تێچووی «${t.title}»؟`))) return
+    if (await remove('txs', t.id, t.title)) say('تێچووەکە سڕایەوە')
   }
 
   const addCost = async () => {
@@ -179,7 +188,7 @@ ${settings.showroomName} ${settings.phone ? '— ' + settings.phone : ''}`
             <Spec icon={<Cog size={15} />} label="گێڕ" value={car.transmission} />
             <Spec icon={<Fuel size={15} />} label="سووتەمەنی" value={car.fuel} />
             <Spec icon={<Cog size={15} />} label="ماتۆڕ" value={car.cylinders || '—'} />
-            <Spec icon={<Cog size={15} />} label="شێواز" value={car.bodyType || '—'} />
+            <Spec icon={<Cog size={15} />} label="جۆری ئۆتۆمبێل" value={car.bodyType || '—'} />
             <Spec icon={<Cog size={15} />} label="کش" value={car.drive || '—'} />
             <Spec icon={<MapPin size={15} />} label="ڕەگەز" value={car.origin || '—'} />
             <Spec icon={<KeyRound size={15} />} label="کلیل" value={car.keys ? <span className="num">{car.keys}</span> : '—'} />
@@ -245,8 +254,8 @@ ${settings.showroomName} ${settings.phone ? '— ' + settings.phone : ''}`
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="num text-sm font-medium text-bad">{money(t.amount, t.currency)}</span>
-                        {can('money.edit') && (
-                          <button onClick={() => remove('txs', t.id, t.title)} className="text-muted hover:text-bad p-1">
+                        {can('contract.delete') && (
+                          <button onClick={() => delCost(t)} className="text-muted hover:text-bad p-1" aria-label="سڕینەوەی تێچوو">
                             <Trash2 size={14} />
                           </button>
                         )}

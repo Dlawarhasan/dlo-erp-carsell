@@ -209,17 +209,17 @@ function matchModel(brand: string | undefined, model?: string, series?: string):
 function matchBody(body?: string): string | undefined {
   const b = clean(body).toLowerCase()
   if (!b) return undefined
-  if (b.includes('sedan') || b.includes('saloon')) return 'سەدان'
-  if (b.includes('hatchback') || b.includes('liftback') || b.includes('notchback')) return 'هاچباک'
+  if (b.includes('sedan') || b.includes('saloon')) return 'نزم'
+  if (b.includes('hatchback') || b.includes('liftback') || b.includes('notchback')) return 'نزم'
   if (b.includes('pickup') || b.includes('truck')) return 'پیکاب'
-  if (b.includes('minivan')) return 'مینی ڤان'
-  if (b.includes('van')) return 'ڤان'
-  if (b.includes('coupe')) return 'کوپێ'
-  if (b.includes('convertible') || b.includes('cabriolet') || b.includes('roadster')) return 'کەبریۆلێت'
-  if (b.includes('wagon')) return 'ستەیشن'
-  if (b.includes('bus')) return 'باس'
+  if (b.includes('minivan')) return 'پاس'
+  if (b.includes('van')) return 'پاس'
+  if (b.includes('coupe')) return 'نزم'
+  if (b.includes('convertible') || b.includes('cabriolet') || b.includes('roadster')) return 'نزم'
+  if (b.includes('wagon')) return 'نزم'
+  if (b.includes('bus')) return 'پاس'
   if (b.includes('sport utility') || b.includes('suv') || b.includes('mpv') || b.includes('crossover'))
-    return b.includes('crossover') ? 'کرۆس ئۆڤەر' : 'جیپ (SUV)'
+    return 'بەرز'
   return undefined
 }
 

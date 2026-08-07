@@ -19,10 +19,10 @@ const L = {
     seller: 'لای یەکەم — فرۆشیار', buyer: 'لای دووەم — کڕیار',
     name: 'ناو', phone: 'تەلەفۆن', idNo: 'ژمارەی ناسنامە', issuer: 'دەرکراوە لە', address: 'ناونیشان', keys: 'ژمارەی کلیل',
     carInfo: 'زانیاری ئۆتۆمبێل', brand: 'براند', model: 'مۆدێل', year: 'ساڵ', color: 'ڕەنگ',
-    vin: 'ژمارەی شانس (VIN)', km: 'کیلۆمەتر', plate: 'پلێت', body: 'شێواز', fuel: 'سووتەمەنی',
+    vin: 'ژمارەی شانس (VIN)', km: 'کیلۆمەتر', plate: 'پلێت', body: 'جۆری ئۆتۆمبێل', fuel: 'سووتەمەنی',
     gear: 'گێڕ', engine: 'ماتۆڕ', origin: 'ڕەگەز', condition: 'دۆخی جەستەی ئۆتۆمبێل',
     allOriginal: 'هەموو پارچەکان ئۆرجینال و سەلیمن.', price: 'نرخی فرۆشتن', inWords: 'بە نووسین',
-    payment: 'شێوازی پارەدان', cash: 'نەقد — بە تەواوی وەرگیرا', inst: 'بە قیست', down: 'پێشەکی',
+    payment: 'شێوازی پارەدان', cash: 'نەقد — بە تەواوی وەرگیرا', received: 'بڕی وەرگیراو', rate: 'نرخی دراو', inst: 'بە قیست', down: 'پێشەکی',
     rest: 'بەرماوە', instTable: 'خشتەی قیستەکان', instNo: 'ژ.', due: 'بەرواری وەرگرتن', amount: 'بڕ',
     sign: 'واژوو', terms: 'مەرجەکانی عەقد', note: 'تێبینی', fingerprint: 'پەنجەمۆر', signature: 'واژوو',
     w1: 'شایەتی یەکەم', w2: 'شایەتی دووەم',
@@ -36,7 +36,7 @@ const L = {
     vin: 'رقم الشاسي (VIN)', km: 'الكيلومترات', plate: 'اللوحة', body: 'نوع الهيكل', fuel: 'الوقود',
     gear: 'ناقل الحركة', engine: 'المحرك', origin: 'المنشأ', condition: 'حالة هيكل السيارة',
     allOriginal: 'جميع القطع أصلية وسليمة.', price: 'سعر البيع', inWords: 'كتابةً',
-    payment: 'طريقة الدفع', cash: 'نقداً — استلم كاملاً', inst: 'بالتقسيط', down: 'الدفعة المقدمة',
+    payment: 'طريقة الدفع', cash: 'نقداً — استلم كاملاً', received: 'المبلغ المستلم', rate: 'سعر الصرف', inst: 'بالتقسيط', down: 'الدفعة المقدمة',
     rest: 'المتبقي', instTable: 'جدول الأقساط', instNo: 'ت', due: 'تاريخ الاستحقاق', amount: 'المبلغ',
     sign: 'التوقيع', terms: 'شروط العقد', note: 'ملاحظات', fingerprint: 'بصمة الإبهام', signature: 'التوقيع',
     w1: 'الشاهد الأول', w2: 'الشاهد الثاني',
@@ -104,6 +104,10 @@ function sheet(c: Contract, s: Settings, lang: Lang) {
   const t = L[lang]
   const issues = BODY_PARTS.filter((p) => (c.car.body || {})[p.key])
   const rest = c.price - (c.down || 0)
+  const cashPayments = (c.cashPayments || []).filter((p) => p.amount > 0)
+  const cashPaymentText = cashPayments.length
+    ? `${esc(t.cash)} · ${esc(t.received)}: <span class="num">${cashPayments.map((p) => money(p.amount, p.currency)).join(' + ')}</span>${cashPayments.length > 1 ? ` · ${esc(t.rate)}: <span class="num">1 $ = ${money(c.rate, 'IQD')}</span>` : ''}`
+    : esc(t.cash)
   const words = lang === 'ku' ? amountWordsKu(c.price, c.currency) : amountWordsAr(c.price, c.currency)
   const terms = lang === 'ku' ? (c.terms?.length ? c.terms : s.terms) : s.termsAr || []
 
@@ -172,7 +176,7 @@ function sheet(c: Contract, s: Settings, lang: Lang) {
         <td class="k">${esc(t.payment)}</td>
         <td class="v" colspan="3">${
           c.payment === 'cash'
-            ? esc(t.cash)
+            ? cashPaymentText
             : `${esc(t.inst)} — ${esc(t.down)}: <span class="num">${money(c.down, c.currency)}</span> · ${esc(t.rest)}: <span class="num">${money(rest, c.currency)}</span> (<span class="num">${c.installments.length}</span> ${lang === 'ku' ? 'قیست' : 'قسط'})`
         }</td>
       </tr>

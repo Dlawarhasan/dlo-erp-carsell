@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { getRepo, setPhotoStore, type SessionUser, type CollName } from '../lib/repo'
-import type { AppUser, AuditEntry, Car, Contract, Customer, Debt, Partner, Settings, Tx, Role } from '../lib/types'
+import { getRepo, setPhotoStore, type SessionUser, type CollName, type RepoWrite } from '../lib/repo'
+import type { AppUser, AuditEntry, Car, Contract, Customer, Debt, Exchanger, Hawala, Partner, Settings, Tx, Role } from '../lib/types'
 import { DEFAULT_TERMS, DEFAULT_TERMS_AR } from '../lib/catalog'
 import { uid } from '../lib/format'
 import { fx } from '../lib/feedback'
@@ -51,6 +51,8 @@ interface AppState {
   txs: Tx[]
   debts: Debt[]
   partners: Partner[]
+  exchangers: Exchanger[]
+  hawalas: Hawala[]
   users: AppUser[]
   audit: AuditEntry[]
   settings: Settings
@@ -62,7 +64,8 @@ interface AppState {
   drop: (id: string) => void
 
   save: <T extends { id: string }>(coll: CollName, obj: T) => Promise<void>
-  remove: (coll: CollName, id: string, label?: string) => Promise<void>
+  commit: (writes: RepoWrite[]) => Promise<void>
+  remove: (coll: CollName, id: string, label?: string) => Promise<boolean>
   log: (action: string, entity: string, entityId?: string, detail?: string) => Promise<void>
   nextContractNo: () => Promise<string>
   signIn: (email: string, pass: string) => Promise<void>
@@ -82,6 +85,8 @@ export const useApp = create<AppState>((set, get) => ({
   txs: [],
   debts: [],
   partners: [],
+  exchangers: [],
+  hawalas: [],
   users: [],
   audit: [],
   settings: DEFAULT_SETTINGS,
@@ -104,6 +109,8 @@ export const useApp = create<AppState>((set, get) => ({
     bind('txs', 'txs')
     bind('debts', 'debts')
     bind('partners', 'partners')
+    bind('exchangers', 'exchangers')
+    bind('hawalas', 'hawalas')
     bind('users', 'users')
     unsubs.push(repo.watch<AuditEntry>('audit', (rows) => set({ audit: rows.sort((a, b) => b.at - a.at).slice(0, 500) })))
     unsubs.push(
@@ -139,10 +146,21 @@ export const useApp = create<AppState>((set, get) => ({
     await repo.put(coll, obj as any)
   },
 
-  async remove(coll, id, label) {
+  async commit(writes) {
     const repo = await getRepo()
-    await repo.del(coll, id)
-    await get().log('سڕینەوە', coll, id, label)
+    await repo.batch(writes)
+  },
+
+  async remove(coll, id, label) {
+    try {
+      const repo = await getRepo()
+      await repo.del(coll, id)
+      await get().log('سڕینەوە', coll, id, label)
+      return true
+    } catch {
+      get().say('نەتوانرا داتاکە بسڕدرێتەوە؛ دەسەڵات و پەیوەندی داتا پشکنین بکە', 'bad')
+      return false
+    }
   },
 
   async log(action, entity, entityId, detail) {

@@ -47,9 +47,9 @@ export default function CustomersPage() {
   }
 
   const del = async (c: Customer) => {
+    if (contracts.some((x) => x.buyerId === c.id)) return say('ئەم کریارە عەقدی هەیە؛ بۆ پاراستنی مێژووی حسابات ناتوانرێت بسڕدرێتەوە', 'bad')
     if (!(await ask(`سڕینەوەی ${c.name}؟`))) return
-    await remove('customers', c.id, c.name)
-    say('سڕایەوە')
+    if (await remove('customers', c.id, c.name)) say('سڕایەوە')
   }
 
   return (
@@ -103,7 +103,7 @@ export default function CustomersPage() {
                   </span>
                   {debt > 0 && <span className="chip bg-warn/12 text-warn border-warn/30">قەرز <span className="num">{money(debt, cur)}</span></span>}
                   <span className="grow" />
-                  {can('contract.create') && (
+                  {can('contract.delete') && (
                     <>
                       <button onClick={() => setEdit(c)} className="btn-quiet !p-2">
                         <Pencil size={15} />

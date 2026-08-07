@@ -25,6 +25,9 @@ service cloud.firestore {
     match /customers/{id} { allow read: if active(); allow write: if canWrite(); }
     match /contracts/{id} { allow read: if active(); allow create, update: if canWrite(); allow delete: if isBoss(); }
     match /txs/{id}       { allow read: if active(); allow create, update: if canWrite(); allow delete: if isBoss(); }
+    match /debts/{id}     { allow read: if active(); allow create, update: if canWrite(); allow delete: if isBoss(); }
+    match /exchangers/{id}{ allow read: if active(); allow create, update: if canWrite(); allow delete: if isBoss(); }
+    match /hawalas/{id}   { allow read: if active(); allow create, update: if canWrite(); allow delete: if isBoss(); }
     match /partners/{id}  { allow read: if active(); allow write: if isBoss(); }
     match /settings/{id}  { allow read: if active(); allow write: if isBoss(); }
     match /photos/{id}    { allow read: if active(); allow write: if canWrite(); }

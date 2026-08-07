@@ -4,7 +4,7 @@ import { Handshake, Plus, Pencil, Trash2, Car, Wallet } from 'lucide-react'
 import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
 import { Empty, Field, MoneyInput, Segmented, Sheet, useConfirm } from '../components/ui'
-import { carMoney } from '../lib/finance'
+import { carMoney, cashBalance } from '../lib/finance'
 import { money, todayISO, uid } from '../lib/format'
 import type { Currency, Partner } from '../lib/types'
 
@@ -15,6 +15,7 @@ export default function PartnersPage() {
   const [edit, setEdit] = useState<Partial<Partner> | null>(null)
   const [payout, setPayout] = useState<{ p: Partner; amount: number; currency: Currency } | null>(null)
   const rate = settings.usdRate
+  const managePartners = can('settings.edit')
 
   const rows = useMemo(
     () =>
@@ -25,7 +26,13 @@ export default function PartnersPage() {
           const m = carMoney(c, txs, contracts, 'USD', rate)
           return s + ((m.profit || 0) * (c.partnerPct || 50)) / 100
         }, 0)
-        const paid = txs.filter((t) => t.partnerId === p.id && t.category === 'partner').reduce((s, t) => s + (t.currency === 'USD' ? t.amount : t.amount / (t.rate || rate)), 0)
+        const paid = txs
+          .filter((t) => t.partnerId === p.id && (t.category === 'partner' || t.category === 'hawala' || t.category === 'hawala_cancel'))
+          .reduce((s, t) => {
+            const paidToPartner = t.category === 'hawala' || t.category === 'hawala_cancel' ? Math.max(0, t.amount - (t.fee || 0)) : t.amount
+            const amount = t.currency === 'USD' ? paidToPartner : paidToPartner / (t.rate || rate)
+            return s + (t.category === 'hawala_cancel' ? -amount : amount)
+          }, 0)
         return { p, cars: mine.length, sold: sold.length, profit, paid, rest: profit - paid }
       }),
     [partners, cars, txs, contracts, rate],
@@ -40,23 +47,20 @@ export default function PartnersPage() {
 
   const doPayout = async () => {
     if (!payout || payout.amount <= 0) return
-    await save('txs', {
-      id: uid('tx'),
-      date: todayISO(),
-      kind: 'out',
-      amount: payout.amount,
-      currency: payout.currency,
-      rate,
-      account: 'cash',
-      category: 'partner',
-      title: `پشکی شەریک — ${payout.p.name}`,
-      partnerId: payout.p.id,
-      createdAt: Date.now(),
-      createdBy: user?.uid,
-    })
-    await log('پارەدان بە شەریک', 'partners', payout.p.id, `${payout.p.name} — ${money(payout.amount, payout.currency)}`)
-    say('تۆمارکرا')
-    setPayout(null)
+    const tolerance = payout.currency === 'USD' ? 0.011 : 1
+    if (payout.amount > cashBalance(txs, payout.currency) + tolerance) return say('باڵانسی سندوق بەس نییە', 'bad')
+    try {
+      await save('txs', {
+        id: uid('tx'), date: todayISO(), kind: 'out', amount: payout.amount, currency: payout.currency,
+        rate, account: 'cash', category: 'partner', title: `پشکی شەریک — ${payout.p.name}`,
+        partnerId: payout.p.id, createdAt: Date.now(), createdBy: user?.uid,
+      })
+      await log('پارەدان بە شەریک', 'partners', payout.p.id, `${payout.p.name} — ${money(payout.amount, payout.currency)}`)
+      say('تۆمارکرا')
+      setPayout(null)
+    } catch {
+      say('نەتوانرا پارەدانەکە تۆمار بکرێت؛ پەیوەندی داتا یان دەسەڵات پشکنین بکە', 'bad')
+    }
   }
 
   if (!can('money.view')) return <Empty icon={<Handshake size={26} />} title="دەسەڵاتت نییە" />
@@ -67,7 +71,7 @@ export default function PartnersPage() {
         title="شەریکەکان"
         sub={<><span className="num">{partners.length}</span> شەریک</>}
         action={
-          <button onClick={() => setEdit({})} className="btn-brand shrink-0">
+          managePartners && <button onClick={() => setEdit({})} className="btn-brand shrink-0">
             <Plus size={17} /> <span className="hidden sm:inline">نوێ</span>
           </button>
         }
@@ -94,22 +98,20 @@ export default function PartnersPage() {
                       </p>
                     )}
                   </div>
-                  <div className="flex gap-1 shrink-0">
-                    <button onClick={() => setEdit(p)} className="btn-quiet !p-2">
-                      <Pencil size={15} />
-                    </button>
+                  {managePartners && <div className="flex gap-1 shrink-0">
+                    <button onClick={() => setEdit(p)} className="btn-quiet !p-2"><Pencil size={15} /></button>
                     <button
                       onClick={async () => {
+                        if (cars.some((c) => c.partnerId === p.id) || txs.some((t) => t.partnerId === p.id)) {
+                          return say('ئەم شەریکە ئۆتۆمبێل یان جوڵەی پارەی پەیوەندیداری هەیە؛ ناتوانرێت بسڕدرێتەوە', 'bad')
+                        }
                         if (await ask(`سڕینەوەی ${p.name}؟`)) {
-                          await remove('partners', p.id, p.name)
-                          say('سڕایەوە')
+                          if (await remove('partners', p.id, p.name)) say('سڕایەوە')
                         }
                       }}
                       className="btn-quiet !p-2 hover:!text-bad"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
+                    ><Trash2 size={15} /></button>
+                  </div>}
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-line text-center">

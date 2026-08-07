@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Printer, Languages, Trash2, Ban, CheckCircle2, Wallet, Share2, Car as CarIcon } from 'lucide-react'
+import { Printer, Languages, Trash2, Ban, CheckCircle2, Loader2, Wallet, Share2, Car as CarIcon } from 'lucide-react'
 import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
 import { ContractSheet } from '../components/ContractSheet'
@@ -11,11 +11,13 @@ import { fmtDate, fmtDateShort, money, todayISO, uid } from '../lib/format'
 export default function ContractView() {
   const { id } = useParams()
   const nav = useNavigate()
-  const { contracts, cars, settings, save, remove, log, say, can, user } = useApp()
+  const { contracts, cars, txs, settings, commit, log, say, can, user } = useApp()
   const c = contracts.find((x) => x.id === id)
   const { ask, node } = useConfirm()
   const [lang, setLang] = useState<'ku' | 'ar'>('ku')
   const [pay, setPay] = useState<{ no: number; amount: number } | null>(null)
+  const [payBusy, setPayBusy] = useState(false)
+  const [cancelBusy, setCancelBusy] = useState(false)
 
   if (!c) return <Empty title="عەقدەکە نەدۆزرایەوە" />
 
@@ -24,43 +26,81 @@ export default function ContractView() {
   const paid = contractPaid(c)
 
   const doPay = async () => {
-    if (!pay || pay.amount <= 0) return
-    const insts = c.installments.map((i) => (i.no === pay.no ? { ...i, paid: (i.paid || 0) + pay.amount, paidDate: todayISO() } : i))
-    const done = insts.every((i) => (i.paid || 0) >= i.amount - 0.01)
-    await save('contracts', { ...c, installments: insts, status: done ? 'completed' : c.status })
-    await save('txs', {
-      id: uid('tx'),
-      date: todayISO(),
-      kind: 'in',
-      amount: pay.amount,
-      currency: c.currency,
-      rate: c.rate || settings.usdRate,
-      account: 'cash',
-      category: 'installment',
-      title: `قیستی ژمارە ${pay.no} — ${c.no}`,
-      carId: c.carId,
-      contractId: c.id,
-      customerId: c.buyerId,
-      createdAt: Date.now(),
-      createdBy: user?.uid,
-    })
-    await log('وەرگرتنی قیست', 'contracts', c.id, `${c.no} — قیستی ${pay.no} — ${money(pay.amount, c.currency)}`)
-    say('پارەکە وەرگیرا')
-    setPay(null)
+    if (!pay || payBusy || c.status !== 'active' || pay.amount <= 0) return
+    const installment = c.installments.find((i) => i.no === pay.no)
+    if (!installment) return say('قیستەکە نەدۆزرایەوە', 'bad')
+    const rest = Math.max(0, installment.amount - (installment.paid || 0))
+    const tolerance = c.currency === 'USD' ? 0.011 : 1
+    if (pay.amount > rest + tolerance) return say('ناتوانیت زیاتر لە باقی قیست وەربگریت', 'bad')
+    setPayBusy(true)
+    try {
+      const insts = c.installments.map((i) => (i.no === pay.no ? { ...i, paid: (i.paid || 0) + pay.amount, paidDate: todayISO() } : i))
+      const done = insts.every((i) => (i.paid || 0) >= i.amount - tolerance)
+      const nextContract = { ...c, installments: insts, status: done ? 'completed' : c.status }
+      const tx = {
+        id: uid('tx'),
+        date: todayISO(),
+        kind: 'in',
+        amount: pay.amount,
+        currency: c.currency,
+        rate: c.rate || settings.usdRate,
+        account: 'cash',
+        category: 'installment',
+        title: `قیستی ژمارە ${pay.no} — ${c.no}`,
+        carId: c.carId,
+        contractId: c.id,
+        customerId: c.buyerId,
+        createdAt: Date.now(),
+        createdBy: user?.uid,
+      }
+      await commit([
+        { kind: 'put', coll: 'contracts', value: nextContract },
+        { kind: 'put', coll: 'txs', value: tx },
+      ])
+      await log('وەرگرتنی قیست', 'contracts', c.id, `${c.no} — قیستی ${pay.no} — ${money(pay.amount, c.currency)}`)
+      say('پارەکە وەرگیرا')
+      setPay(null)
+    } finally {
+      setPayBusy(false)
+    }
   }
 
   const cancel = async () => {
+    if (cancelBusy) return
     if (!(await ask('دڵنیایت لە هەڵوەشاندنەوەی ئەم عەقدە؟ ئۆتۆمبێلەکە دەگەڕێتەوە بۆ بەردەست.'))) return
-    await save('contracts', { ...c, status: 'cancelled' })
-    if (car) await save('cars', { ...car, status: 'available', updatedAt: Date.now() })
-    await log('هەڵوەشاندنەوەی عەقد', 'contracts', c.id, c.no)
-    say('عەقدەکە هەڵوەشێنرایەوە', 'info')
+    const received = txs.filter((t) => t.contractId === c.id && (t.category === 'car_sell' || t.category === 'installment'))
+    if (received.length && !(await ask('پارەی وەرگیراو گەڕاوەتەوە بۆ کریار؟ بەردەوامبوون هەموو پارە وەرگیراوەکان وەک «گەڕاندنەوە» تۆمار دەکات.'))) return
+    setCancelBusy(true)
+    try {
+      const at = Date.now()
+      const writes: Parameters<typeof commit>[0] = []
+      for (let i = 0; i < received.length; i++) {
+        const t = received[i]
+        writes.push({ kind: 'put', coll: 'txs', value: {
+          id: uid('tx'), date: todayISO(), kind: 'out', amount: t.amount, currency: t.currency,
+          rate: t.rate || c.rate || settings.usdRate, account: t.account, category: 'contract_refund',
+          title: `گەڕاندنەوەی پارەی عەقد — ${c.no}`, carId: c.carId, contractId: c.id, customerId: c.buyerId,
+          note: `بەرامبەر ${t.title}`, createdAt: at + i, createdBy: user?.uid,
+        } })
+      }
+      writes.push({ kind: 'put', coll: 'contracts', value: { ...c, status: 'cancelled' } })
+      if (car) writes.push({ kind: 'put', coll: 'cars', value: { ...car, status: 'available', updatedAt: Date.now() } })
+      await commit(writes)
+      await log('هەڵوەشاندنەوەی عەقد', 'contracts', c.id, received.length ? `${c.no} — پارەکە گەڕایەوە بۆ کریار` : c.no)
+      say(received.length ? 'عەقدەکە هەڵوەشایەوە و پارەکەش گەڕایەوە' : 'عەقدەکە هەڵوەشێنرایەوە', 'info')
+    } finally {
+      setCancelBusy(false)
+    }
   }
 
   const del = async () => {
+    if (txs.some((t) => t.contractId === c.id)) return say('عەقدێک کە جوڵەی پارەی هەیە ناتوانرێت بسڕدرێتەوە؛ تەنها هەڵیوەشێنەوە', 'bad')
     if (!(await ask('سڕینەوەی عەقد نەگەڕاوەیە. بەردەوامبم؟'))) return
-    await remove('contracts', c.id, c.no)
-    if (car) await save('cars', { ...car, status: 'available', updatedAt: Date.now() })
+    await commit([
+      { kind: 'del', coll: 'contracts', id: c.id },
+      ...(car ? [{ kind: 'put' as const, coll: 'cars' as const, value: { ...car, status: 'available' as const, updatedAt: Date.now() } }] : []),
+    ])
+    await log('سڕینەوە', 'contracts', c.id, c.no)
     say('عەقدەکە سڕایەوە')
     nav('/contracts')
   }
@@ -108,9 +148,9 @@ export default function ContractView() {
               <CarIcon size={17} /> ئۆتۆمبێل
             </button>
           )}
-          {c.status === 'active' && can('contract.create') && (
-            <button onClick={cancel} className="btn-ghost !text-warn">
-              <Ban size={17} /> هەڵوەشاندنەوە
+          {c.status === 'active' && can('contract.delete') && (
+            <button disabled={cancelBusy} onClick={cancel} className="btn-ghost !text-warn disabled:opacity-45">
+              {cancelBusy ? <Loader2 size={17} className="animate-spin" /> : <Ban size={17} />} هەڵوەشاندنەوە
             </button>
           )}
           {can('contract.delete') && (
@@ -153,7 +193,7 @@ export default function ContractView() {
                       </p>
                     </div>
                     <span className="num text-sm font-medium shrink-0">{money(i.amount, c.currency)}</span>
-                    {!done && can('money.edit') && (
+                    {!done && c.status === 'active' && can('money.edit') && (
                       <button onClick={() => setPay({ no: i.no, amount: rest })} className="btn-brand !py-1.5 !px-3 !text-[13px] shrink-0">
                         وەرگرتن
                       </button>
@@ -183,11 +223,11 @@ export default function ContractView() {
         title={`وەرگرتنی قیستی ژمارە ${pay?.no ?? ''}`}
         footer={
           <>
-            <button className="btn-ghost" onClick={() => setPay(null)}>
+            <button className="btn-ghost" disabled={payBusy} onClick={() => setPay(null)}>
               پاشگەزبوونەوە
             </button>
-            <button className="btn-brand" onClick={doPay}>
-              <Wallet size={16} /> تۆمارکردن
+            <button className="btn-brand" disabled={payBusy} onClick={doPay}>
+              {payBusy ? <Loader2 size={16} className="animate-spin" /> : <Wallet size={16} />} تۆمارکردن
             </button>
           </>
         }

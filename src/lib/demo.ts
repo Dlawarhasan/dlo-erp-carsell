@@ -1,4 +1,4 @@
-import type { Car, Contract, Customer, Partner, Tx } from './types'
+import type { Car, Contract, Customer, Exchanger, Hawala, Partner, Tx } from './types'
 import { todayISO, uid } from './format'
 
 const day = 86400000
@@ -7,38 +7,44 @@ const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10)
 /** داتای نموونە بۆ تاقیکردنەوەی سیستەم */
 export function demoData() {
   const now = Date.now()
-  const ids = { c1: uid('car'), c2: uid('car'), c3: uid('car'), c4: uid('car'), cus1: uid('cus'), con1: uid('con'), p1: uid('prt') }
+  const ids = { c1: uid('car'), c2: uid('car'), c3: uid('car'), c4: uid('car'), cus1: uid('cus'), con1: uid('con'), p1: uid('prt'), ex1: uid('ex'), h1: uid('haw'), txh1: uid('tx') }
 
   const partners: Partner[] = [{ id: ids.p1, name: 'دڵشاد ئیبراهیم (نموونە)', phone: '07701112233', createdAt: now - 50 * day }]
+  const exchangers: Exchanger[] = [{ id: ids.ex1, name: 'سەرافی نموونە', phone: '07702223344', createdAt: now - 20 * day }]
+  const hawalas: Hawala[] = [{
+    id: ids.h1, exchangerId: ids.ex1, recipientType: 'partner', recipientName: partners[0].name, partnerId: ids.p1,
+    amount: 250, fee: 2, currency: 'USD', rate: 1320, date: iso(now - 2 * day), reference: 'HAW-001',
+    status: 'sent', txId: ids.txh1, createdAt: now - 2 * day,
+  }]
 
   const cars: Car[] = [
     {
       id: ids.c1, vin: 'JTMBFREV5HD123456', brand: 'Toyota', model: 'RAV4', trim: 'Limited', year: 2019,
-      color: 'سپی مرواری', bodyType: 'جیپ (SUV)', fuel: 'بەنزین', transmission: 'ئۆتۆماتیک', cylinders: '4 سلندەر',
+      color: 'سپی مرواری', bodyType: 'بەرز', fuel: 'بەنزین', transmission: 'ئۆتۆماتیک', cylinders: '4 سلندەر',
       drive: 'چوار کش (4WD/AWD)', origin: 'ئەمریکی', km: 78500, keys: 2, plate: 'هەولێر 21345', status: 'available',
       ownership: 'owned', buyPrice: 17500, buyCurrency: 'USD', buyDate: iso(now - 40 * day), sellerName: 'کاروان عەلی',
       sellerPhone: '07501234567', askPrice: 21500, askCurrency: 'USD', photos: [],
       body: { bonnet: 'painted', doorFR: 'putty', bumperF: 'scratched' },
-      bodyNote: 'کاپۆت بۆیاغ کراوە بەهۆی خەراشەیەکی بچووک.', location: 'پێشانگا ١',
+      bodyNote: 'بۆنیت بۆیاغ کراوە بەهۆی خەراشەیەکی بچووک.', location: 'پێشانگا ١',
       createdAt: now - 40 * day, updatedAt: now - 2 * day,
     },
     {
       id: ids.c2, vin: 'WDDGF4HB1CR123789', brand: 'Mercedes-Benz', model: 'C-Class', year: 2016, color: 'ڕەش',
-      bodyType: 'سەدان', fuel: 'بەنزین', transmission: 'ئۆتۆماتیک', cylinders: '4 سلندەر', origin: 'ئەوروپی',
+      bodyType: 'نزم', fuel: 'بەنزین', transmission: 'ئۆتۆماتیک', cylinders: '4 سلندەر', origin: 'ئەوروپی',
       km: 121000, keys: 2, status: 'available', ownership: 'consignment', partnerId: ids.p1, partnerPct: 50,
       buyPrice: 14000, buyCurrency: 'USD', buyDate: iso(now - 25 * day), askPrice: 17800, askCurrency: 'USD',
       photos: [], body: {}, createdAt: now - 25 * day, updatedAt: now - 25 * day,
     },
     {
       id: ids.c3, vin: 'JN8AZ2NE9J9123444', brand: 'Nissan', model: 'Patrol', year: 2020, color: 'شینی تاریک',
-      bodyType: 'جیپ (SUV)', fuel: 'بەنزین', transmission: 'ئۆتۆماتیک', cylinders: '8 سلندەر', origin: 'خەلیجی',
+      bodyType: 'بەرز', fuel: 'بەنزین', transmission: 'ئۆتۆماتیک', cylinders: '8 سلندەر', origin: 'خەلیجی',
       km: 54000, keys: 2, status: 'workshop', ownership: 'owned', buyPrice: 42000, buyCurrency: 'USD',
       buyDate: iso(now - 15 * day), askPrice: 49000, askCurrency: 'USD', photos: [], body: {},
       createdAt: now - 15 * day, updatedAt: now - day,
     },
     {
       id: ids.c4, vin: 'KNAGM4AD5F5123222', brand: 'Kia', model: 'Optima', year: 2015, color: 'زیوی',
-      bodyType: 'سەدان', fuel: 'بەنزین', transmission: 'ئۆتۆماتیک', origin: 'کۆریایی', km: 145000, keys: 1,
+      bodyType: 'نزم', fuel: 'بەنزین', transmission: 'ئۆتۆماتیک', origin: 'کۆریایی', km: 145000, keys: 1,
       status: 'sold', ownership: 'owned', buyPrice: 8200, buyCurrency: 'USD', buyDate: iso(now - 90 * day),
       askPrice: 10500, askCurrency: 'USD', photos: [], body: { bumperR: 'painted' },
       createdAt: now - 90 * day, updatedAt: now - 5 * day,
@@ -79,7 +85,9 @@ export function demoData() {
     { id: uid('tx'), date: iso(now - 12 * day), kind: 'out', amount: 900000, currency: 'IQD', rate: 1320, account: 'cash', category: 'expense', title: 'کرێی پێشانگا', createdAt: now - 12 * day },
     { id: uid('tx'), date: iso(now - 10 * day), kind: 'out', amount: 750000, currency: 'IQD', rate: 1320, account: 'cash', category: 'expense', title: 'مووچەی کارمەند', createdAt: now - 10 * day },
     { id: uid('tx'), date: todayISO(), kind: 'out', amount: 120000, currency: 'IQD', rate: 1320, account: 'cash', category: 'expense', title: 'سووتەمەنی و گواستنەوە', createdAt: now },
+    { id: uid('tx'), date: iso(now - 3 * day), kind: 'out', amount: 1000, currency: 'USD', rate: 1320, account: 'cash', category: 'exchange_transfer', title: 'گواستنەوە بۆ سەراف — سەرافی نموونە', exchangerId: ids.ex1, createdAt: now - 3 * day },
+    { id: ids.txh1, date: iso(now - 2 * day), kind: 'out', amount: 252, fee: 2, currency: 'USD', rate: 1320, account: 'exchanger', category: 'hawala', title: 'حەواڵە بۆ دڵشاد ئیبراهیم (نموونە) — لەلای سەرافی نموونە', exchangerId: ids.ex1, hawalaId: ids.h1, partnerId: ids.p1, createdAt: now - 2 * day },
   ]
 
-  return { cars, customers, contracts, txs, partners }
+  return { cars, customers, contracts, txs, partners, exchangers, hawalas }
 }

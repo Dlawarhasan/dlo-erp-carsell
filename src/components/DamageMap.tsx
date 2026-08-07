@@ -60,93 +60,110 @@ export function DamageMap({
   const issues = BODY_PARTS.filter((p) => v[p.key])
 
   return (
-    <div className={compact ? '' : 'grid lg:grid-cols-[auto_1fr] gap-6 items-start'}>
-      <div className="flex flex-col items-center">
-        <svg viewBox="0 0 240 500" className={compact ? 'w-[150px]' : 'w-[220px] max-w-full'} aria-label="نەخشەی جەستەی ئۆتۆمبێل">
-          {/* سێبەری ناو */}
-          <rect x="14" y="8" width="212" height="482" rx="60" fill="rgb(var(--c-surface))" stroke="rgb(var(--c-line))" strokeWidth="1.5" />
-          {Object.entries(GEO).map(([key, g]) => {
-            const active = !!v[key]
-            return (
-              <g key={key}>
-                <rect
-                  x={g.x}
-                  y={g.y}
-                  width={g.w}
-                  height={g.h}
-                  rx={g.rx}
-                  fill={fillOf(key)}
-                  fillOpacity={active ? 0.85 : 1}
-                  stroke={strokeOf(key)}
-                  strokeWidth={active ? 2 : 1.2}
-                  className={readOnly ? '' : 'cursor-pointer transition-[fill-opacity,stroke-width] hover:fill-opacity-100'}
-                  onClick={() => !readOnly && setSel(key)}
-                />
-                {active && (
-                  <text
-                    x={g.x + g.w / 2}
-                    y={g.y + g.h / 2 + 4}
-                    textAnchor="middle"
-                    fontSize="13"
-                    fontWeight="700"
-                    fill="#0b0f14"
-                    pointerEvents="none"
-                  >
-                    {PART_STATE_KEYS.indexOf(v[key]) + 1}
-                  </text>
-                )}
-              </g>
-            )
-          })}
-          {/* ئاراستە */}
-          <text x="120" y="504" textAnchor="middle" fontSize="11" fill="rgb(var(--c-muted))">
-            دواوە
-          </text>
-          <text x="120" y="8" textAnchor="middle" fontSize="11" fill="rgb(var(--c-muted))">
-            پێشەوە
-          </text>
-        </svg>
-        {!readOnly && (
-          <div className="flex gap-2 mt-3">
-            <button type="button" className="btn-ghost !py-1.5 !px-3 !text-[13px]" onClick={() => onChange?.({})}>
-              <CheckCircle2 size={14} /> هەمووی ئۆرجینال
-            </button>
-          </div>
-        )}
+    <div className={compact ? 'space-y-3' : 'space-y-4'}>
+      <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-line bg-surface2/70 p-2.5">
+        {PART_STATE_KEYS.map((k, i) => (
+          <span key={k} className="chip" style={{ borderColor: PART_STATES[k].hex + '66', color: PART_STATES[k].hex, background: PART_STATES[k].hex + '18' }}>
+            <span className="w-4 h-4 rounded-full grid place-items-center text-[10px] font-bold text-[#0b0f14]" style={{ background: PART_STATES[k].hex }}>
+              {i + 1}
+            </span>
+            {PART_STATES[k].short}
+          </span>
+        ))}
+        {!readOnly && <span className="text-[12px] text-muted me-auto">لەسەر پارچەکە کلیک بکە</span>}
       </div>
 
-      <div className={compact ? 'mt-4' : ''}>
-        {/* پێناسەی ڕەنگەکان */}
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          {PART_STATE_KEYS.map((k, i) => (
-            <span key={k} className="chip" style={{ borderColor: PART_STATES[k].hex + '66', color: PART_STATES[k].hex, background: PART_STATES[k].hex + '18' }}>
-              <span className="w-4 h-4 rounded-full grid place-items-center text-[10px] font-bold text-[#0b0f14]" style={{ background: PART_STATES[k].hex }}>
-                {i + 1}
-              </span>
-              {PART_STATES[k].short}
-            </span>
-          ))}
+      <div className={compact ? 'space-y-4' : 'grid gap-5 sm:grid-cols-[220px_minmax(0,1fr)] sm:items-start'}>
+        <div className="flex flex-col items-center">
+          <div className="w-full max-w-[220px] rounded-[28px] border border-line bg-gradient-to-b from-surface2 to-surface p-2.5 shadow-sm">
+            <svg viewBox="0 0 240 500" className="w-full" aria-label="نەخشەی جەستەی ئۆتۆمبێل">
+              {/* شێوەی سەرەوەی ئۆتۆمبێل */}
+              <path d="M78 8h84c28 0 49 18 55 47l11 120v150l-11 120c-6 28-27 47-55 47H78c-28 0-49-19-55-47L12 325V175L23 55C29 26 50 8 78 8Z" fill="rgb(var(--c-surface))" stroke="rgb(var(--c-line))" strokeWidth="1.6" />
+              <rect x="5" y="105" width="12" height="62" rx="6" fill="rgb(var(--c-ink))" opacity=".35" />
+              <rect x="223" y="105" width="12" height="62" rx="6" fill="rgb(var(--c-ink))" opacity=".35" />
+              <rect x="5" y="332" width="12" height="62" rx="6" fill="rgb(var(--c-ink))" opacity=".35" />
+              <rect x="223" y="332" width="12" height="62" rx="6" fill="rgb(var(--c-ink))" opacity=".35" />
+              {Object.entries(GEO).map(([key, g]) => {
+                const active = !!v[key]
+                return (
+                  <g key={key}>
+                    <rect
+                      x={g.x}
+                      y={g.y}
+                      width={g.w}
+                      height={g.h}
+                      rx={g.rx}
+                      fill={fillOf(key)}
+                      fillOpacity={active ? 0.9 : 1}
+                      stroke={strokeOf(key)}
+                      strokeWidth={active ? 2.2 : 1.2}
+                      className={readOnly ? '' : 'cursor-pointer transition-[fill-opacity,stroke-width] hover:fill-opacity-100'}
+                      onClick={() => !readOnly && setSel(key)}
+                    />
+                    {active && (
+                      <text
+                        x={g.x + g.w / 2}
+                        y={g.y + g.h / 2 + 4}
+                        textAnchor="middle"
+                        fontSize="13"
+                        fontWeight="800"
+                        fill="#0b0f14"
+                        pointerEvents="none"
+                      >
+                        {PART_STATE_KEYS.indexOf(v[key]) + 1}
+                      </text>
+                    )}
+                  </g>
+                )
+              })}
+              <path d="M113 22h14" stroke="rgb(var(--c-muted))" strokeWidth="2" strokeLinecap="round" opacity=".7" />
+              <path d="M113 478h14" stroke="rgb(var(--c-muted))" strokeWidth="2" strokeLinecap="round" opacity=".7" />
+            </svg>
+          </div>
+          <div className="mt-2 flex w-full max-w-[220px] justify-between px-2 text-[11px] text-muted">
+            <span>پێشەوە</span><span>دواوە</span>
+          </div>
+          {!readOnly && (
+            <button type="button" className="btn-ghost mt-2.5 !py-1.5 !px-3 !text-[13px]" onClick={() => onChange?.({})}>
+              <CheckCircle2 size={14} /> هەمووی ئۆرجینال
+            </button>
+          )}
         </div>
 
-        {issues.length === 0 ? (
-          <div className="flex items-center gap-2 text-sm text-ok bg-ok/10 border border-ok/25 rounded-xl px-3.5 py-3">
-            <CheckCircle2 size={17} /> هەموو پارچەکان ئۆرجینال و سەلیمن
+        <div className={compact ? '' : 'min-w-0'}>
+          {issues.length === 0 ? (
+            <div className="mb-3 flex items-center gap-2 rounded-xl border border-ok/25 bg-ok/10 px-3.5 py-2.5 text-sm text-ok">
+              <CheckCircle2 size={17} /> هەموو پارچەکان ئۆرجینال و سەلیمن
+            </div>
+          ) : (
+            <div className="mb-3 flex items-center gap-2 rounded-xl border border-warn/25 bg-warn/10 px-3.5 py-2.5 text-sm text-ink">
+              <span className="grid h-6 min-w-6 place-items-center rounded-lg bg-warn/20 text-[12px] font-bold num">{issues.length}</span>
+              پارچە تێبینی لەسەرە
+            </div>
+          )}
+          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+            {BODY_PARTS.map((p) => {
+              const state = v[p.key]
+              const detail = state ? PART_STATES[state] : PART_STATES.original
+              return (
+                <button
+                  key={p.key}
+                  type="button"
+                  disabled={readOnly}
+                  onClick={() => !readOnly && setSel(p.key)}
+                  className={`flex min-w-0 items-center gap-2 rounded-xl border px-2.5 py-2 text-start transition ${
+                    state ? 'bg-surface border-line' : 'bg-surface2/55 border-line/70'
+                  } ${readOnly ? 'cursor-default' : 'hover:border-brand/50 hover:bg-surface'}`}
+                  style={state ? { borderColor: detail.hex + '88' } : undefined}
+                >
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: detail.hex }} />
+                  <span className="min-w-0 flex-1 truncate text-[12px] font-medium">{p.ku}</span>
+                  <span className="shrink-0 text-[11px]" style={{ color: detail.hex }}>{detail.short}</span>
+                </button>
+              )
+            })}
           </div>
-        ) : (
-          <div className="space-y-1.5">
-            <p className="text-[13px] text-muted mb-2">
-              <span className="num font-bold text-ink">{issues.length}</span> پارچە تێبینی لەسەرە:
-            </p>
-            {issues.map((p) => (
-              <div key={p.key} className="flex items-center justify-between gap-2 bg-surface2 border border-line rounded-xl px-3 py-2">
-                <span className="text-sm">{p.ku}</span>
-                <span className="chip" style={{ borderColor: PART_STATES[v[p.key]].hex + '66', color: PART_STATES[v[p.key]].hex, background: PART_STATES[v[p.key]].hex + '18' }}>
-                  {PART_STATES[v[p.key]].ku}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        </div>
       </div>
 
       <Sheet open={!!sel} onClose={() => setSel(null)} title={part?.ku}>

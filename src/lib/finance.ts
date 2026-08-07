@@ -44,11 +44,52 @@ export function balances(txs: Tx[], cur: Currency, rate: number, from?: string, 
     if (to && t.date > to) continue
     const v = convert(t.amount, t.currency, cur, t.rate || rate) * (t.kind === 'in' ? 1 : -1)
     if (t.account === 'bank') bank += v
-    else cash += v
-    if (t.kind === 'in') tin += Math.abs(v)
-    else tout += Math.abs(v)
+    else if (t.account === 'cash') cash += v
+    // جوڵەی سەراف لە باڵانسی کاش/بانک هەژمار ناکرێت؛ لە خوارەوە بەجیا پیشان دەدرێت.
+    const internalCurrencyExchange = t.category === 'cash_exchange_out' || t.category === 'cash_exchange_in'
+    if (t.account !== 'exchanger' && !internalCurrencyExchange) {
+      if (t.kind === 'in') tin += Math.abs(v)
+      else tout += Math.abs(v)
+    }
   }
   return { cash, bank, total: cash + bank, in: tin, out: tout }
+}
+
+/** باڵانسی ڕاستەقینەی حسابێک بە یەک دراو، بەبێ گۆڕینی نرخ. */
+export function accountBalance(txs: Tx[], account: 'cash' | 'bank', currency: Currency) {
+  return txs
+    .filter((t) => t.account === account && t.currency === currency)
+    .reduce((sum, t) => sum + (t.kind === 'in' ? t.amount : -t.amount), 0)
+}
+
+/** باڵانسی ڕاستەقینەی سندوق بە یەک دراو، بەبێ گۆڕینی نرخ. */
+export function cashBalance(txs: Tx[], currency: Currency) {
+  return accountBalance(txs, 'cash', currency)
+}
+
+/** باڵانسی پارەی خەزنکراو لەلای سەرافێک، بە هەمان دراو. */
+export function exchangerBalance(txs: Tx[], exchangerId: string, currency: Currency) {
+  return txs
+    .filter((t) => t.exchangerId === exchangerId && t.currency === currency)
+    .reduce((sum, t) => {
+      if (t.category === 'exchange_transfer') return sum + t.amount
+      if (t.category === 'exchange_return') return sum - t.amount
+      if (t.category === 'hawala') return sum - t.amount
+      if (t.category === 'hawala_cancel') return sum + t.amount
+      return sum
+    }, 0)
+}
+
+/** کۆی پارەی لەلای هەموو سەرافەکان، بە هەمان دراو. */
+export function exchangersTotal(txs: Tx[], currency: Currency) {
+  return txs.reduce((sum, t) => {
+    if (!t.exchangerId || t.currency !== currency) return sum
+    if (t.category === 'exchange_transfer') return sum + t.amount
+    if (t.category === 'exchange_return') return sum - t.amount
+    if (t.category === 'hawala') return sum - t.amount
+    if (t.category === 'hawala_cancel') return sum + t.amount
+    return sum
+  }, 0)
 }
 
 export interface DueInfo {

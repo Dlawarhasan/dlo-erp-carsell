@@ -2,28 +2,39 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Wallet, TrendingUp, TrendingDown, Plus, Trash2, ArrowDownLeft, ArrowUpRight, Banknote,
-  Landmark, CalendarClock, PieChart, Receipt, AlertTriangle,
+  Landmark, CalendarClock, PieChart, Receipt, AlertTriangle, ArrowLeftRight, Loader2,
 } from 'lucide-react'
 import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
 import { NotebookPen } from 'lucide-react'
 import { Empty, Field, MoneyInput, Picker, Segmented, Sheet, Stat, useConfirm } from '../components/ui'
-import { balances, carMoney, openInstallments, profitInRange } from '../lib/finance'
+import { accountBalance, balances, carMoney, cashBalance, openInstallments, profitInRange } from '../lib/finance'
 import { EXPENSE_CATEGORIES, TX_CATEGORY_KU } from '../lib/catalog'
 import { fmtDateShort, money, num, todayISO, uid } from '../lib/format'
 import type { Currency, Tx, TxCategory } from '../lib/types'
 
 const daysAgo = (n: number) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)
 
+type CashExchangeForm = {
+  from: Currency
+  amount: number
+  rate: number
+  date: string
+  note: string
+}
+
 export default function Accounting() {
   const nav = useNavigate()
-  const { txs, cars, contracts, debts, settings, save, remove, log, say, can, user } = useApp()
+  const { txs, cars, contracts, debts, exchangers, hawalas, settings, save, commit, remove, log, say, can, user } = useApp()
   const { ask, node } = useConfirm()
   const [tab, setTab] = useState<'sum' | 'cash' | 'debt' | 'profit'>('sum')
   const [cur, setCur] = useState<Currency>('USD')
   const [from, setFrom] = useState(daysAgo(30))
   const [to, setTo] = useState(todayISO())
   const [open, setOpen] = useState(false)
+  const [cashExchange, setCashExchange] = useState<CashExchangeForm | null>(null)
+  const [savingCashExchange, setSavingCashExchange] = useState(false)
+  const [savingTx, setSavingTx] = useState(false)
   const rate = settings.usdRate
 
   const [f, setF] = useState<Partial<Tx>>({
@@ -33,6 +44,8 @@ export default function Accounting() {
   const inRange = useMemo(() => txs.filter((t) => t.date >= from && t.date <= to), [txs, from, to])
   const bAll = useMemo(() => balances(txs, cur, rate), [txs, cur, rate])
   const bRange = useMemo(() => balances(inRange, cur, rate), [inRange, cur, rate])
+  const cashUsd = useMemo(() => cashBalance(txs, 'USD'), [txs])
+  const cashIqd = useMemo(() => cashBalance(txs, 'IQD'), [txs])
   const prof = useMemo(() => profitInRange(cars, txs, contracts, cur, rate, from, to), [cars, txs, contracts, cur, rate, from, to])
   const dues = useMemo(() => openInstallments(contracts), [contracts])
   const overdue = dues.filter((d) => d.overdue)
@@ -67,7 +80,7 @@ export default function Accounting() {
 
   const byCategory = useMemo(() => {
     const map: Record<string, number> = {}
-    for (const t of inRange.filter((x) => x.kind === 'out')) {
+    for (const t of inRange.filter((x) => x.kind === 'out' && x.category !== 'cash_exchange_out')) {
       const v = t.currency === cur ? t.amount : t.currency === 'USD' ? t.amount * (t.rate || rate) : t.amount / (t.rate || rate)
       map[t.category] = (map[t.category] || 0) + v
     }
@@ -75,31 +88,100 @@ export default function Accounting() {
   }, [inRange, cur, rate])
 
   const addTx = async () => {
+    if (savingTx) return
     if (!f.amount || !f.title) return say('بڕ و ناونیشان پێویستە', 'bad')
-    await save('txs', {
-      id: uid('tx'),
-      date: f.date || todayISO(),
-      kind: f.kind as 'in' | 'out',
-      amount: f.amount!,
-      currency: f.currency as Currency,
-      rate,
-      account: f.account as 'cash' | 'bank',
-      category: f.category as TxCategory,
-      title: f.title!,
-      note: f.note,
-      createdAt: Date.now(),
-      createdBy: user?.uid,
-    })
-    await log('تۆمارکردنی جوڵەی پارە', 'txs', undefined, `${f.title} — ${money(f.amount!, f.currency as Currency)}`)
-    say('تۆمارکرا')
-    setF({ ...f, amount: 0, title: '', note: '' })
-    setOpen(false)
+    const account = f.account as 'cash' | 'bank'
+    const currency = f.currency as Currency
+    const tolerance = currency === 'USD' ? 0.011 : 1
+    if (f.kind === 'out' && f.amount! > accountBalance(txs, account, currency) + tolerance) {
+      return say(`باڵانسی ${account === 'cash' ? 'سندوق' : 'بانک'} بەس نییە`, 'bad')
+    }
+    setSavingTx(true)
+    try {
+      await save('txs', {
+        id: uid('tx'), date: f.date || todayISO(), kind: f.kind as 'in' | 'out', amount: f.amount!, currency,
+        rate, account, category: f.category as TxCategory, title: f.title!, note: f.note, createdAt: Date.now(), createdBy: user?.uid,
+      })
+      await log('تۆمارکردنی جوڵەی پارە', 'txs', undefined, `${f.title} — ${money(f.amount!, currency)}`)
+      say('تۆمارکرا')
+      setF({ ...f, amount: 0, title: '', note: '' })
+      setOpen(false)
+    } catch {
+      say('نەتوانرا جوڵەی پارە تۆمار بکرێت؛ پەیوەندی داتا یان دەسەڵات پشکنین بکە', 'bad')
+    } finally {
+      setSavingTx(false)
+    }
   }
 
   const delTx = async (t: Tx) => {
-    if (!(await ask(`سڕینەوەی «${t.title}»؟`))) return
-    await remove('txs', t.id, t.title)
-    say('سڕایەوە')
+    if (t.hawalaId || t.category === 'hawala' || t.category === 'hawala_cancel') {
+      return say('حەواڵە لێرە ناسڕدرێتەوە؛ لە پەڕەی حەواڵەکان هەڵیوەشێنەوە', 'bad')
+    }
+    if (t.category === 'exchange_transfer' || t.category === 'exchange_return') {
+      return say('جوڵەی سەراف لێرە ناسڕدرێتەوە؛ بۆ ڕاستکردنەوە جوڵەی پێچەوانە لە پەڕەی سەراف تۆمار بکە', 'bad')
+    }
+    if (t.contractId || t.category === 'car_sell' || t.category === 'installment' || t.category === 'contract_refund') {
+      return say('جوڵەی عەقد لێرە ناسڕدرێتەوە؛ لە ناو خودی عەقد ڕاستی بکەوە', 'bad')
+    }
+    const linked = t.cashExchangeId ? txs.filter((x) => x.cashExchangeId === t.cashExchangeId) : [t]
+    const msg = linked.length > 1 ? 'ئەمە هەردوو جوڵەی ئیکسچێنج دەسڕێتەوە. بەردەوامبم؟' : `سڕینەوەی «${t.title}»؟`
+    if (!(await ask(msg))) return
+    try {
+      if (linked.length > 1) {
+        await commit(linked.map((row) => ({ kind: 'del' as const, coll: 'txs' as const, id: row.id })))
+        await log('سڕینەوەی ئیکسچێنج', 'txs', t.cashExchangeId, t.title)
+        say('هەردوو جوڵەی ئیکسچێنج سڕانەوە')
+        return
+      }
+      if (await remove('txs', t.id, t.title)) say('سڕایەوە')
+    } catch {
+      say('نەتوانرا جوڵەی پارە بسڕدرێتەوە؛ دەسەڵات و پەیوەندی داتا پشکنین بکە', 'bad')
+    }
+  }
+
+  const exchangeTo = cashExchange?.from === 'USD' ? 'IQD' : 'USD'
+  const exchangeReceived = cashExchange
+    ? cashExchange.from === 'IQD'
+      ? Math.round((cashExchange.amount / Math.max(1, cashExchange.rate)) * 100) / 100
+      : Math.round(cashExchange.amount * Math.max(1, cashExchange.rate))
+    : 0
+
+  const saveCashExchange = async () => {
+    if (!cashExchange || savingCashExchange) return
+    if (cashExchange.amount <= 0 || cashExchange.rate <= 0) return say('بڕ و نرخی دراو پێویستن', 'bad')
+    const available = cashExchange.from === 'USD' ? cashUsd : cashIqd
+    const tolerance = cashExchange.from === 'USD' ? 0.011 : 1
+    if (cashExchange.amount > available + tolerance) return say('باڵانسی ئەم سندوقە بەس نییە', 'bad')
+    if (exchangeReceived <= 0) return say('بڕی وەرگیراو دروست نییە', 'bad')
+
+    setSavingCashExchange(true)
+    try {
+      const id = uid('fx')
+      const fromKu = cashExchange.from === 'USD' ? 'دۆلار' : 'دینار'
+      const toKu = exchangeTo === 'USD' ? 'دۆلار' : 'دینار'
+      const createdAt = Date.now()
+      const out: Tx = {
+        id: uid('tx'), date: cashExchange.date, kind: 'out', amount: cashExchange.amount,
+        currency: cashExchange.from, rate: cashExchange.rate, account: 'cash', category: 'cash_exchange_out',
+        title: `ئیکسچێنج — ${fromKu} بۆ ${toKu}`, cashExchangeId: id, note: cashExchange.note || undefined,
+        createdAt, createdBy: user?.uid,
+      }
+      const incoming: Tx = {
+        id: uid('tx'), date: cashExchange.date, kind: 'in', amount: exchangeReceived,
+        currency: exchangeTo, rate: cashExchange.rate, account: 'cash', category: 'cash_exchange_in',
+        title: `ئیکسچێنج — وەرگرتنی ${toKu} لە ${fromKu}`, cashExchangeId: id, note: cashExchange.note || undefined,
+        createdAt: createdAt + 1, createdBy: user?.uid,
+      }
+      await commit([
+        { kind: 'put', coll: 'txs', value: out },
+        { kind: 'put', coll: 'txs', value: incoming },
+      ])
+      await log('ئیکسچێنجی سندوق', 'txs', id, `${money(cashExchange.amount, cashExchange.from)} → ${money(exchangeReceived, exchangeTo)} · 1 $ = ${num(cashExchange.rate)} د.ع`)
+      say('ئیکسچێنجەکە تۆمارکرا')
+      setCashExchange(null)
+    } finally {
+      setSavingCashExchange(false)
+    }
   }
 
   if (!can('money.view')) return <Empty icon={<Wallet size={26} />} title="دەسەڵاتت نییە" sub="تەنها خاوەن و ژمێریار دەتوانن حسابات ببینن" />
@@ -222,8 +304,35 @@ export default function Accounting() {
         {/* ============ سندوق ============ */}
         {tab === 'cash' && (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <Stat label="کاش" value={<span className="num">{money(bAll.cash, cur)}</span>} icon={<Banknote size={16} />} />
+            {can('money.edit') && (
+              <button onClick={() => setCashExchange({ from: 'IQD', amount: 0, rate: Math.max(1, settings.usdRate), date: todayISO(), note: '' })} className="card p-3.5 w-full flex items-center gap-3 text-start hover:border-brand/40">
+                <span className="w-10 h-10 rounded-xl bg-info/15 text-info grid place-items-center shrink-0"><ArrowLeftRight size={18} /></span>
+                <div className="grow min-w-0">
+                  <p className="text-sm font-medium">ئیکسچێنجی سندوق</p>
+                  <p className="text-xs text-muted mt-0.5">دینار ⇄ دۆلار بە نرخی دیاریکراو</p>
+                </div>
+                <span className="text-xs text-brand shrink-0">گۆڕین</span>
+              </button>
+            )}
+            <button onClick={() => nav('/exchangers')} className="card p-3.5 w-full flex items-center gap-3 text-start hover:border-brand/40">
+              <span className="w-10 h-10 rounded-xl bg-brand/15 text-brand grid place-items-center shrink-0"><ArrowLeftRight size={18} /></span>
+              <div className="grow min-w-0">
+                <p className="text-sm font-medium">سندووقی سەرافەکان</p>
+                <p className="text-xs text-muted mt-0.5"><span className="num">{exchangers.length}</span> سەراف · گواستنەوە و وەرگرتنەوەی پارە</p>
+              </div>
+              <span className="text-xs text-brand shrink-0">کردنەوە</span>
+            </button>
+            <button onClick={() => nav('/hawalas')} className="card p-3.5 w-full flex items-center gap-3 text-start hover:border-brand/40">
+              <span className="w-10 h-10 rounded-xl bg-info/15 text-info grid place-items-center shrink-0"><ArrowUpRight size={18} /></span>
+              <div className="grow min-w-0">
+                <p className="text-sm font-medium">حەواڵەکان</p>
+                <p className="text-xs text-muted mt-0.5"><span className="num">{hawalas.filter((h) => h.status === 'sent').length}</span> حەواڵەی چالاک · بۆ شەریک، کریار یان کەسی تر</p>
+              </div>
+              <span className="text-xs text-brand shrink-0">کردنەوە</span>
+            </button>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <Stat label="سندووقی دۆلار" value={<span className="num">{money(cashUsd, 'USD')}</span>} icon={<Banknote size={16} />} />
+              <Stat label="سندووقی دینار" value={<span className="num">{money(cashIqd, 'IQD')}</span>} icon={<Banknote size={16} />} />
               <Stat label="بانک" value={<span className="num">{money(bAll.bank, cur)}</span>} icon={<Landmark size={16} />} />
             </div>
             {inRange.length === 0 ? (
@@ -240,14 +349,14 @@ export default function Accounting() {
                       <div className="grow min-w-0">
                         <p className="text-sm font-medium truncate">{t.title}</p>
                         <p className="text-xs text-muted truncate">
-                          {TX_CATEGORY_KU[t.category]} · <span className="num">{fmtDateShort(t.date)}</span> · {t.account === 'bank' ? 'بانک' : 'کاش'}
+                          {TX_CATEGORY_KU[t.category]} · <span className="num">{fmtDateShort(t.date)}</span> · {t.account === 'bank' ? 'بانک' : t.account === 'exchanger' ? 'سەراف' : 'کاش'}
                         </p>
                       </div>
                       <span className={`num text-sm font-bold shrink-0 ${t.kind === 'in' ? 'text-ok' : 'text-bad'}`}>
                         {t.kind === 'in' ? '+' : '−'}
                         {money(t.amount, t.currency)}
                       </span>
-                      {can('money.edit') && (
+                      {can('contract.delete') && (
                         <button onClick={() => delTx(t)} className="text-muted hover:text-bad p-1 shrink-0">
                           <Trash2 size={15} />
                         </button>
@@ -362,11 +471,11 @@ export default function Accounting() {
         title="تۆمارکردنی جوڵەی پارە"
         footer={
           <>
-            <button className="btn-ghost" onClick={() => setOpen(false)}>
+            <button className="btn-ghost" disabled={savingTx} onClick={() => setOpen(false)}>
               پاشگەزبوونەوە
             </button>
-            <button className="btn-brand" onClick={addTx}>
-              <Plus size={16} /> تۆمارکردن
+            <button className="btn-brand" disabled={savingTx} onClick={addTx}>
+              {savingTx ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} تۆمارکردن
             </button>
           </>
         }
@@ -384,7 +493,7 @@ export default function Accounting() {
             <Picker
               value={TX_CATEGORY_KU[f.category as string] || ''}
               onChange={(v) => setF({ ...f, category: (Object.keys(TX_CATEGORY_KU).find((k) => TX_CATEGORY_KU[k] === v) || 'other') as TxCategory })}
-              options={(f.kind === 'in' ? ['capital', 'installment', 'car_sell', 'other'] : ['expense', 'car_cost', 'withdraw', 'commission', 'partner', 'other']).map((k) => TX_CATEGORY_KU[k])}
+              options={(f.kind === 'in' ? ['capital', 'other'] : ['expense', 'withdraw', 'commission', 'other']).map((k) => TX_CATEGORY_KU[k])}
             />
           </Field>
           <Field label="ناونیشان">
@@ -415,6 +524,44 @@ export default function Accounting() {
             نرخی ئاڵوگۆڕ: <span className="num">1 $ = {num(rate)}</span> د.ع (لە ڕێکخستن دەیگۆڕیت)
           </p>
         </div>
+      </Sheet>
+
+      <Sheet
+        open={!!cashExchange}
+        onClose={() => setCashExchange(null)}
+        title="ئیکسچێنجی دینار و دۆلار"
+        footer={<><button className="btn-ghost" disabled={savingCashExchange} onClick={() => setCashExchange(null)}>پاشگەزبوونەوە</button><button className="btn-brand" disabled={savingCashExchange} onClick={saveCashExchange}>{savingCashExchange ? <Loader2 size={16} className="animate-spin" /> : <ArrowLeftRight size={16} />} تۆمارکردن</button></>}
+      >
+        {cashExchange && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-info/30 bg-info/8 px-3 py-2.5 text-[13px] leading-6 text-ink">
+              دراوەکە لە سندوقی یەکەم کەم دەبێت و بە نرخی خوارەوە بۆ سندوقی دووەم زیاد دەبێت. ئەم جوڵەیە داهات یان خەرجی نییە.
+            </div>
+            <Field label="لە کام سندوقەوە؟">
+              <Segmented value={cashExchange.from} onChange={(from: Currency) => setCashExchange({ ...cashExchange, from, amount: 0 })} options={[{ v: 'IQD', label: 'دینار → دۆلار' }, { v: 'USD', label: 'دۆلار → دینار' }]} size="sm" />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={`بڕی ${cashExchange.from === 'USD' ? 'دۆلار' : 'دینار'}ی دەرچوو`}>
+                <MoneyInput value={cashExchange.amount} onChange={(amount) => setCashExchange({ ...cashExchange, amount })} />
+              </Field>
+              <Field label="نرخی دراو (١ $)">
+                <MoneyInput value={cashExchange.rate} onChange={(rate) => setCashExchange({ ...cashExchange, rate })} />
+              </Field>
+              <Field label="بەروار" className="col-span-2">
+                <input type="date" dir="ltr" value={cashExchange.date} onChange={(e) => setCashExchange({ ...cashExchange, date: e.target.value })} className="field num text-start" />
+              </Field>
+            </div>
+            <div className="rounded-xl bg-surface2 border border-line px-3 py-2.5 text-sm flex items-center justify-between gap-3">
+              <span className="text-muted">بڕی وەرگیراو بە {exchangeTo === 'USD' ? 'دۆلار' : 'دینار'}</span>
+              <b className="num">{money(exchangeReceived, exchangeTo || 'USD')}</b>
+            </div>
+            <div className="rounded-xl bg-surface2 border border-line px-3 py-2.5 text-sm flex items-center justify-between gap-3">
+              <span className="text-muted">باڵانسی بەردەست لە سندوقی دەرچوو</span>
+              <b className="num">{money(cashExchange.from === 'USD' ? cashUsd : cashIqd, cashExchange.from)}</b>
+            </div>
+            <Field label="تێبینی"><input value={cashExchange.note} onChange={(e) => setCashExchange({ ...cashExchange, note: e.target.value })} className="field" placeholder="ئارەزوومەندانە" /></Field>
+          </div>
+        )}
       </Sheet>
 
       {node}

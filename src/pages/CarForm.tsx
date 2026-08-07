@@ -285,7 +285,7 @@ export default function CarForm() {
                 )}
               />
             </Field>
-            <Field label="شێوازی جەستە">
+            <Field label="جۆری ئۆتۆمبێل">
               <Picker value={c.bodyType} onChange={(v) => set('bodyType', v)} options={BODY_TYPES} />
             </Field>
             <Field label="جۆری سووتەمەنی">
@@ -396,7 +396,7 @@ export default function CarForm() {
         <Section icon={<Wrench size={17} />} title="دۆخی پارچەکان" sub="لەسەر هەر پارچەیەک دابگرە و دۆخەکەی دیاری بکە">
           <DamageMap value={c.body} onChange={(v: Record<string, PartState>) => set('body', v)} />
           <Field label="تێبینی لەسەر جەستە" className="mt-5">
-            <textarea rows={3} value={c.bodyNote || ''} onChange={(e) => set('bodyNote', e.target.value)} className="field" placeholder="نموونە: کاپۆت بۆیاغی فەبریکە نییە، دەرگای چەپ گۆڕدراوە..." />
+            <textarea rows={3} value={c.bodyNote || ''} onChange={(e) => set('bodyNote', e.target.value)} className="field" placeholder="نموونە: بۆنیت بۆیاغی فەبریکە نییە، دەرگای چەپ گۆڕدراوە..." />
           </Field>
         </Section>
 

@@ -16,8 +16,11 @@ const Contracts = lazy(() => import('./pages/Contracts'))
 const ContractView = lazy(() => import('./pages/ContractView'))
 const Customers = lazy(() => import('./pages/Customers'))
 const Accounting = lazy(() => import('./pages/Accounting'))
+const Reports = lazy(() => import('./pages/Reports'))
 const Debts = lazy(() => import('./pages/Debts'))
 const Partners = lazy(() => import('./pages/Partners'))
+const Exchangers = lazy(() => import('./pages/Exchangers'))
+const Hawalas = lazy(() => import('./pages/Hawalas'))
 const Security = lazy(() => import('./pages/Security'))
 const Users = lazy(() => import('./pages/Users'))
 const Audit = lazy(() => import('./pages/Audit'))
@@ -62,8 +65,11 @@ export default function App() {
           <Route path="/contracts/:id" element={<ContractView />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/accounting" element={<Accounting />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="/debts" element={<Debts />} />
           <Route path="/partners" element={<Partners />} />
+          <Route path="/exchangers" element={<Exchangers />} />
+          <Route path="/hawalas" element={<Hawalas />} />
           <Route path="/security" element={<Security />} />
           <Route path="/users" element={<Users />} />
           <Route path="/audit" element={<Audit />} />

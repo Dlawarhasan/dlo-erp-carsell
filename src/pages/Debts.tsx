@@ -17,6 +17,7 @@ import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
 import { Field, MoneyInput, Picker, Segmented, SearchBar, Empty, Sheet, Stat, Switch, useConfirm } from '../components/ui'
 import { addMonths, fmtDateShort, fold, money, num, todayISO, uid } from '../lib/format'
+import { accountBalance } from '../lib/finance'
 import { fx } from '../lib/feedback'
 import type { Currency, Debt, DebtKind, DebtPayment, Installment, Tx } from '../lib/types'
 
@@ -72,6 +73,7 @@ export default function Debts() {
   const [payFor, setPayFor] = useState<Debt | null>(null)
 
   const editable = can('money.edit')
+  const deletable = can('contract.delete')
 
   const list = useMemo(() => {
     const needle = fold(q)
@@ -100,9 +102,9 @@ export default function Debts() {
 
   /* ── سڕینەوە ── */
   const del = async (d: Debt) => {
+    if (d.payments?.length) return say('ئەم قەرزە پارەدانی تۆمارکراوی هەیە؛ بۆ پاراستنی حسابات ناتوانرێت بسڕدرێتەوە', 'bad')
     if (!(await ask(`قەرزی «${d.personName}» بسڕدرێتەوە؟ ئەم کردارە ناگەڕێتەوە.`))) return
-    await remove('debts', d.id, d.personName)
-    say('سڕایەوە', 'info')
+    if (await remove('debts', d.id, d.personName)) say('سڕایەوە', 'info')
   }
 
   /* ── داخستن/کردنەوە بە دەست ── */
@@ -227,6 +229,7 @@ export default function Debts() {
                 key={d.id}
                 d={d}
                 editable={editable}
+                deletable={deletable}
                 onEdit={() => setEdit(d)}
                 onPay={() => setPayFor(d)}
                 onDelete={() => del(d)}
@@ -266,6 +269,7 @@ function blank(uidStr?: string, name?: string): Debt {
 function DebtRow({
   d,
   editable,
+  deletable,
   onEdit,
   onPay,
   onDelete,
@@ -273,6 +277,7 @@ function DebtRow({
 }: {
   d: Debt
   editable: boolean
+  deletable: boolean
   onEdit: () => void
   onPay: () => void
   onDelete: () => void
@@ -400,9 +405,7 @@ function DebtRow({
               <button onClick={onToggle} className="btn-ghost !py-1.5 !px-3 text-[13px]">
                 {done ? 'کردنەوە' : 'وەک تەواوبوو'}
               </button>
-              <button onClick={onDelete} className="btn-ghost !py-1.5 !px-3 text-[13px] text-bad">
-                <Trash2 size={15} />
-              </button>
+              {deletable && <button onClick={onDelete} className="btn-ghost !py-1.5 !px-3 text-[13px] text-bad"><Trash2 size={15} /></button>}
             </div>
           )}
         </div>
@@ -589,7 +592,7 @@ function DebtForm({ debt, customers, onClose }: { debt: Debt; customers: { id: s
 /* ═════════════ فۆرمی پارەدان ═════════════ */
 
 function PayForm({ debt, onClose }: { debt: Debt; onClose: () => void }) {
-  const { save, log, say, settings, user } = useApp()
+  const { txs, commit, log, say, settings, user } = useApp()
   const left = debtLeft(debt)
   const [amount, setAmount] = useState(left)
   const [date, setDate] = useState(todayISO())
@@ -603,15 +606,20 @@ function PayForm({ debt, onClose }: { debt: Debt; onClose: () => void }) {
   const submit = async () => {
     if (!(amount > 0)) return say('بڕی پارە بنووسە', 'bad')
     if (amount > left + 0.01) return say('بڕەکە لە ماوەکە زیاترە', 'bad')
+    if (toCashbox && !inbound) {
+      const tolerance = debt.currency === 'USD' ? 0.011 : 1
+      if (amount > accountBalance(txs, account, debt.currency) + tolerance) return say(`باڵانسی ${account === 'cash' ? 'سندوق' : 'بانک'} بەس نییە`, 'bad')
+    }
     setBusy(true)
     try {
       const pid = uid('dp')
       let txId: string | undefined
 
       // ١) ئەگەر بچێتە سندوق — مامەڵەیەک دروست دەکەین
+      let tx: Tx | undefined
       if (toCashbox) {
         txId = uid('tx')
-        const tx: Tx = {
+        tx = {
           id: txId,
           date,
           kind: inbound ? 'in' : 'out',
@@ -626,7 +634,6 @@ function PayForm({ debt, onClose }: { debt: Debt; onClose: () => void }) {
           createdAt: Date.now(),
           createdBy: user?.uid,
         }
-        await save('txs', tx)
       }
 
       // ٢) پارەدانەکە
@@ -664,7 +671,10 @@ function PayForm({ debt, onClose }: { debt: Debt; onClose: () => void }) {
         updatedAt: Date.now(),
       }
 
-      await save('debts', next)
+      await commit([
+        ...(tx ? [{ kind: 'put' as const, coll: 'txs' as const, value: tx }] : []),
+        { kind: 'put' as const, coll: 'debts' as const, value: next },
+      ])
       await log('پارەدانی قەرز', 'debts', debt.id, `${debt.personName} — ${money(amount, debt.currency)}`)
 
       if (next.status === 'closed') {

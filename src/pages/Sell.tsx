@@ -5,15 +5,15 @@ import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
 import { Field, MoneyInput, Picker, Segmented, Empty } from '../components/ui'
 import { CITIES } from '../lib/catalog'
-import { addMonths, fmtDate, money, num, todayISO, uid } from '../lib/format'
+import { addMonths, convert, fmtDate, money, num, todayISO, uid } from '../lib/format'
 import { amountWordsKu } from '../lib/numwords'
 import { fx } from '../lib/feedback'
-import type { Contract, Currency, Customer, Installment } from '../lib/types'
+import type { Contract, Currency, CurrencyPayment, Customer, Installment } from '../lib/types'
 
 export default function Sell() {
   const { carId } = useParams()
   const nav = useNavigate()
-  const { cars, customers, settings, save, log, say, user, nextContractNo } = useApp()
+  const { cars, customers, settings, commit, log, say, user, nextContractNo } = useApp()
   const car = cars.find((c) => c.id === carId)
 
   const [step, setStep] = useState(0)
@@ -25,6 +25,10 @@ export default function Sell() {
   const [price, setPrice] = useState(car?.askPrice || 0)
   const [currency, setCurrency] = useState<Currency>(car?.askCurrency || 'USD')
   const [payment, setPayment] = useState<'cash' | 'installment'>('cash')
+  const [cashUsd, setCashUsd] = useState((car?.askCurrency || 'USD') === 'USD' ? car?.askPrice || 0 : 0)
+  const [cashIqd, setCashIqd] = useState((car?.askCurrency || 'USD') === 'IQD' ? car?.askPrice || 0 : 0)
+  const [cashInput, setCashInput] = useState<Currency>(car?.askCurrency || 'USD')
+  const [cashEdited, setCashEdited] = useState(false)
   const [down, setDown] = useState(0)
   const [count, setCount] = useState(6)
   const [firstDue, setFirstDue] = useState(addMonths(todayISO(), 1))
@@ -36,6 +40,81 @@ export default function Sell() {
   const [w2, setW2] = useState('')
 
   const buyer = useMemo(() => (mode === 'existing' ? customers.find((c) => c.id === pickedId) : null), [mode, pickedId, customers])
+  const rate = Math.max(1, settings.usdRate || 0)
+  const cashPayments = useMemo<CurrencyPayment[]>(
+    () => ([{ currency: 'USD', amount: cashUsd }, { currency: 'IQD', amount: cashIqd }].filter((p) => p.amount > 0) as CurrencyPayment[]),
+    [cashUsd, cashIqd],
+  )
+  const cashEquivalent = useMemo(
+    () => cashPayments.reduce((sum, p) => sum + convert(p.amount, p.currency, currency, rate), 0),
+    [cashPayments, currency, rate],
+  )
+  const cashOk = price > 0 && Math.abs(cashEquivalent - price) <= (currency === 'USD' ? 0.011 : 1)
+
+  const roundCurrency = (amount: number, target: Currency) =>
+    target === 'IQD' ? Math.round(amount) : Math.round(amount * 100) / 100
+
+  /** یەک خانە دەنووسرێت و خانەی دووەم ماوەی نرخەکەی خۆکار پڕ دەکات. */
+  const setCashAmount = (inputCurrency: Currency, amount: number, forPrice = price) => {
+    const safeAmount = Math.max(0, amount || 0)
+    const paidInContractCurrency = convert(safeAmount, inputCurrency, currency, rate)
+    const otherCurrency: Currency = inputCurrency === 'USD' ? 'IQD' : 'USD'
+    const remainder = roundCurrency(convert(Math.max(0, forPrice - paidInContractCurrency), currency, otherCurrency, rate), otherCurrency)
+    if (inputCurrency === 'USD') {
+      setCashUsd(safeAmount)
+      setCashIqd(remainder)
+    } else {
+      setCashIqd(safeAmount)
+      setCashUsd(remainder)
+    }
+    setCashInput(inputCurrency)
+    setCashEdited(true)
+  }
+
+  const setSalePrice = (amount: number) => {
+    const safeAmount = Math.max(0, amount || 0)
+    setPrice(safeAmount)
+    if (payment !== 'cash') return
+    if (!cashEdited) {
+      if (currency === 'USD') {
+        setCashUsd(safeAmount)
+        setCashIqd(0)
+      } else {
+        setCashIqd(safeAmount)
+        setCashUsd(0)
+      }
+      return
+    }
+    setCashAmount(cashInput, cashInput === 'USD' ? cashUsd : cashIqd, safeAmount)
+  }
+
+  const setSaleCurrency = (next: Currency) => {
+    setCurrency(next)
+    setCashInput(next)
+    setCashEdited(false)
+    if (next === 'USD') {
+      setCashUsd(price)
+      setCashIqd(0)
+    } else {
+      setCashIqd(price)
+      setCashUsd(0)
+    }
+  }
+
+  const setPaymentMode = (next: 'cash' | 'installment') => {
+    setPayment(next)
+    if (next === 'cash') {
+      setCashInput(currency)
+      setCashEdited(false)
+      if (currency === 'USD') {
+        setCashUsd(price)
+        setCashIqd(0)
+      } else {
+        setCashIqd(price)
+        setCashUsd(0)
+      }
+    }
+  }
 
   const buildSchedule = () => {
     const rest = Math.max(0, price - down)
@@ -51,7 +130,7 @@ export default function Sell() {
   }
 
   const buyerOk = mode === 'existing' ? !!pickedId : !!(nb.name && nb.phone)
-  const priceOk = price > 0 && (payment === 'cash' || (schedule.length > 0 && Math.abs(schedule.reduce((s, i) => s + i.amount, 0) + down - price) < 1))
+  const priceOk = price > 0 && (payment === 'cash' ? cashOk : (schedule.length > 0 && Math.abs(schedule.reduce((s, i) => s + i.amount, 0) + down - price) < 1))
 
   if (!car) return <Empty title="ئۆتۆمبێلەکە نەدۆزرایەوە" />
 
@@ -71,7 +150,6 @@ export default function Sell() {
           city: nb.city,
           createdAt: Date.now(),
         }
-        await save('customers', cust)
       }
 
       const no = await nextContractNo()
@@ -110,6 +188,7 @@ export default function Sell() {
         payment,
         down: payment === 'cash' ? price : down,
         installments: payment === 'installment' ? schedule : [],
+        cashPayments: payment === 'cash' ? cashPayments : undefined,
         terms: settings.terms,
         note,
         witness1: w1,
@@ -119,29 +198,37 @@ export default function Sell() {
         createdBy: user?.uid,
         createdByName: user?.name,
       }
-      await save('contracts', contract)
-      await save('cars', { ...car, status: 'sold', updatedAt: Date.now() })
-
-      const paidNow = payment === 'cash' ? price : down
-      if (paidNow > 0) {
-        await save('txs', {
+      const received = payment === 'cash'
+        ? cashPayments
+        : down > 0 ? [{ currency, amount: down }] : []
+      const at = Date.now()
+      const writes: Parameters<typeof commit>[0] = []
+      if (mode === 'new') writes.push({ kind: 'put', coll: 'customers', value: cust })
+      writes.push(
+        { kind: 'put', coll: 'contracts', value: contract },
+        { kind: 'put', coll: 'cars', value: { ...car, status: 'sold', updatedAt: at } },
+      )
+      for (let i = 0; i < received.length; i++) {
+        const receivedAmount = received[i]
+        writes.push({ kind: 'put', coll: 'txs', value: {
           id: uid('tx'),
           date,
           kind: 'in',
-          amount: paidNow,
-          currency,
+          amount: receivedAmount.amount,
+          currency: receivedAmount.currency,
           rate: settings.usdRate,
           account: 'cash',
           category: 'car_sell',
-          title: `فرۆشتنی ${car.brand} ${car.model} ${car.year}`,
+          title: `فرۆشتنی ${car.brand} ${car.model} ${car.year} — ${receivedAmount.currency === 'USD' ? 'دۆلار' : 'دینار'}`,
           carId: car.id,
           contractId: contract.id,
           customerId: cust.id,
-          note: payment === 'installment' ? 'پێشەکی' : '',
-          createdAt: Date.now(),
+          note: payment === 'installment' ? 'پێشەکی' : 'پارەدانی دوو دراو',
+          createdAt: at + i,
           createdBy: user?.uid,
-        })
+        } })
       }
+      await commit(writes)
       await log('فرۆشتنی ئۆتۆمبێل', 'contracts', contract.id, `${no} — ${car.brand} ${car.model} بۆ ${cust.name}`)
       fx('money')
       say('عەقدەکە دروستکرا')
@@ -236,8 +323,8 @@ export default function Sell() {
             <div className="grid sm:grid-cols-2 gap-4">
               <Field label="نرخی فرۆشتن *">
                 <div className="flex gap-2">
-                  <MoneyInput value={price} onChange={setPrice} />
-                  <Segmented value={currency} onChange={setCurrency} options={[{ v: 'USD' as Currency, label: '$' }, { v: 'IQD' as Currency, label: 'د.ع' }]} size="sm" />
+                  <MoneyInput value={price} onChange={setSalePrice} />
+                  <Segmented value={currency} onChange={setSaleCurrency} options={[{ v: 'USD' as Currency, label: '$' }, { v: 'IQD' as Currency, label: 'د.ع' }]} size="sm" />
                 </div>
               </Field>
               <Field label="بەرواری عەقد">
@@ -250,13 +337,34 @@ export default function Sell() {
             <Field label="شێوازی پارەدان">
               <Segmented
                 value={payment}
-                onChange={setPayment}
+                onChange={setPaymentMode}
                 options={[
                   { v: 'cash' as const, label: 'نەقد (تەواو)' },
                   { v: 'installment' as const, label: 'قیست' },
                 ]}
               />
             </Field>
+
+            {payment === 'cash' && (
+              <div className="space-y-3 border-t border-line pt-4">
+                <div className="rounded-xl border border-brand/30 bg-brand/8 px-3 py-2.5 text-[13px] leading-6 text-ink">
+                  <b>پارەدانی دوو دراو:</b> بڕی یەک دراو بنووسە؛ بڕی دراوی دووەم خۆکارانە بە نرخی ڕۆژی تۆمارکراو حساب دەکرێت.
+                  <span className="block text-muted">١ $ = <span className="num">{num(rate)}</span> د.ع</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="بڕی وەرگیراو بە دۆلار">
+                    <MoneyInput value={cashUsd} onChange={(amount) => setCashAmount('USD', amount)} />
+                  </Field>
+                  <Field label="بڕی وەرگیراو بە دینار">
+                    <MoneyInput value={cashIqd} onChange={(amount) => setCashAmount('IQD', amount)} />
+                  </Field>
+                </div>
+                <div className={`rounded-xl border px-3 py-2.5 text-sm flex items-center justify-between gap-3 ${cashOk ? 'border-ok/30 bg-ok/8' : 'border-bad/35 bg-bad/8'}`}>
+                  <span>{cashOk ? 'کۆی پارەدان تەواوە' : 'کۆی پارەدان یەکسانی نرخ نییە'}</span>
+                  <b className="num">{money(cashEquivalent, currency)} / {money(price, currency)}</b>
+                </div>
+              </div>
+            )}
 
             {payment === 'installment' && (
               <div className="space-y-4 border-t border-line pt-4">
@@ -348,6 +456,8 @@ export default function Sell() {
             <Row k="کریار" v={mode === 'existing' ? `${buyer?.name} — ${buyer?.phone}` : `${nb.name} — ${nb.phone}`} />
             <Row k="نرخ" v={<span className="num font-bold text-brand">{money(price, currency)}</span>} />
             <Row k="شێوازی پارەدان" v={payment === 'cash' ? 'نەقد' : `قیست — پێشەکی ${money(down, currency)} + ${schedule.length} قیست`} />
+            {payment === 'cash' && <Row k="وەرگیراو" v={<span className="num">{cashPayments.map((p) => money(p.amount, p.currency)).join(' + ')}</span>} />}
+            {payment === 'cash' && cashPayments.length > 1 && <Row k="نرخی دراو" v={<span className="num">1 $ = {num(rate)} د.ع</span>} />}
             <Row k="بەروار" v={<span className="num">{fmtDate(date)}</span>} />
 
             <div className="flex gap-2 pt-2">

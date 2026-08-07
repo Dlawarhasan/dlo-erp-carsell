@@ -2,8 +2,13 @@ import Dexie, { type Table } from 'dexie'
 import { getFbConfig } from './firebaseConfig'
 import type { AppUser, Role } from './types'
 
-export const COLLECTIONS = ['cars', 'customers', 'contracts', 'txs', 'debts', 'partners', 'users', 'audit', 'settings'] as const
+export const COLLECTIONS = ['cars', 'customers', 'contracts', 'txs', 'debts', 'partners', 'exchangers', 'hawalas', 'users', 'audit', 'settings'] as const
 export type CollName = (typeof COLLECTIONS)[number]
+
+/** چەند نووسینێکی پەیوەندیدار کە دەبێت پێکەوە جێبەجێ بکرێن. */
+export type RepoWrite =
+  | { kind: 'put'; coll: CollName; value: any }
+  | { kind: 'del'; coll: CollName; id: string }
 
 export interface SessionUser {
   uid: string
@@ -54,6 +59,7 @@ export interface Repo {
   watch<T>(coll: CollName, cb: (rows: T[]) => void): () => void
   put(coll: CollName, obj: Record<string, unknown> & { id: string }): Promise<void>
   putMany(coll: CollName, objs: (Record<string, unknown> & { id: string })[]): Promise<void>
+  batch(writes: RepoWrite[]): Promise<void>
   del(coll: CollName, id: string): Promise<void>
   uploadImage(blob: Blob, name: string): Promise<{ url?: string; path?: string }>
   /** هێنانەوەی وێنەی تەواو بەپێی path */
@@ -76,6 +82,8 @@ class LocalDB extends Dexie {
   debts!: Table<any, string>
   txs!: Table<any, string>
   partners!: Table<any, string>
+  exchangers!: Table<any, string>
+  hawalas!: Table<any, string>
   users!: Table<any, string>
   audit!: Table<any, string>
   settings!: Table<any, string>
@@ -94,6 +102,14 @@ class LocalDB extends Dexie {
     // ٢) زیادکردنی دەفتەری قەرز — داتای کۆن هەروەک خۆی دەمێنێتەوە
     this.version(2).stores({
       debts: 'id, kind, status, date',
+    })
+    // ٣) سەرافەکان — گواستنەوەکان لە خشتەی txs خەزن دەکرێن.
+    this.version(3).stores({
+      exchangers: 'id, name',
+    })
+    // ٤) مێژووی حەواڵەکان
+    this.version(4).stores({
+      hawalas: 'id, exchangerId, recipientType, partnerId, customerId, status, date',
     })
   }
 }
@@ -133,6 +149,17 @@ function createLocalRepo(): Repo {
     async putMany(coll, objs) {
       await (db as any)[coll].bulkPut(JSON.parse(JSON.stringify(objs)))
       await emit(coll)
+    },
+    async batch(writes) {
+      if (!writes.length) return
+      const tables = [...new Set(writes.map((w) => (db as any)[w.coll]))]
+      await (db as any).transaction('rw', ...tables, async () => {
+        for (const w of writes) {
+          if (w.kind === 'put') await (db as any)[w.coll].put(JSON.parse(JSON.stringify(w.value)))
+          else await (db as any)[w.coll].delete(w.id)
+        }
+      })
+      for (const coll of new Set(writes.map((w) => w.coll))) await emit(coll)
     },
     async del(coll, id) {
       await (db as any)[coll].delete(id)
@@ -200,6 +227,19 @@ async function createCloudRepo(cfg: NonNullable<ReturnType<typeof getFbConfig>>)
         const { id, ...rest } = o
         batch.set(fs.doc(dbf, coll, id), JSON.parse(JSON.stringify(rest)), { merge: true })
       })
+      await batch.commit()
+    },
+    async batch(writes) {
+      if (!writes.length) return
+      const batch = fs.writeBatch(dbf)
+      for (const w of writes) {
+        if (w.kind === 'put') {
+          const { id, ...rest } = w.value
+          batch.set(fs.doc(dbf, w.coll, id), JSON.parse(JSON.stringify(rest)), { merge: true })
+        } else {
+          batch.delete(fs.doc(dbf, w.coll, w.id))
+        }
+      }
       await batch.commit()
     },
     async del(coll, id) {

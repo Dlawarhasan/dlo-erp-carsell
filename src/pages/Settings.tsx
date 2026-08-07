@@ -86,7 +86,7 @@ function FeedbackCard() {
 
 export default function SettingsPage() {
   const app = useApp()
-  const { settings, save, say, can, mode, cars, customers, contracts, txs, partners } = app
+  const { settings, save, say, can, mode, cars, customers, contracts, txs, debts, partners, exchangers, hawalas } = app
   const { ask, node } = useConfirm()
   const [s, setS] = useState<Settings>({ ...DEFAULT_SETTINGS, ...settings })
   const [fb, setFb] = useState(false)
@@ -122,7 +122,7 @@ export default function SettingsPage() {
   }
 
   const backup = async () => {
-    const data = { version: 1, at: new Date().toISOString(), cars, customers, contracts, txs, partners, settings: s }
+    const data = { version: 3, at: new Date().toISOString(), cars, customers, contracts, txs, partners, exchangers, hawalas, settings: s }
     downloadFile(`باکئەپ_${todayISO()}.json`, JSON.stringify(data, null, 2), 'application/json')
     say('باکئەپ داگیرا')
   }
@@ -160,6 +160,8 @@ export default function SettingsPage() {
       await repo.putMany('contracts', d.contracts as any)
       await repo.putMany('txs', d.txs as any)
       await repo.putMany('partners', d.partners as any)
+      await repo.putMany('exchangers', d.exchangers as any)
+      await repo.putMany('hawalas', d.hawalas as any)
       say('داتای نموونە زیادکرا')
     } finally {
       setBusy(false)
@@ -171,10 +173,12 @@ export default function SettingsPage() {
     setBusy(true)
     try {
       const repo = await getRepo()
-      for (const [coll, rows] of [['cars', cars], ['customers', customers], ['contracts', contracts], ['txs', txs], ['partners', partners]] as const) {
+      for (const [coll, rows] of [['cars', cars], ['customers', customers], ['contracts', contracts], ['txs', txs], ['debts', debts], ['partners', partners], ['exchangers', exchangers], ['hawalas', hawalas]] as const) {
         for (const r of rows as { id: string }[]) await repo.del(coll as any, r.id)
       }
       say('هەموو داتاکان سڕانەوە', 'info')
+    } catch {
+      say('نەتوانرا هەموو داتاکان بسڕدرێنەوە؛ دەسەڵات و پەیوەندی داتا پشکنین بکە', 'bad')
     } finally {
       setBusy(false)
     }

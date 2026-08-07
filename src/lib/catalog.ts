@@ -86,7 +86,7 @@ export const COLORS: { ku: string; hex: string }[] = [
   { ku: 'ڕەنگی تر', hex: '#8A8F98' },
 ]
 
-export const BODY_TYPES = ['سەدان', 'هاچباک', 'جیپ (SUV)', 'کرۆس ئۆڤەر', 'کوپێ', 'پیکاب', 'ڤان', 'مینی ڤان', 'ستەیشن', 'کەبریۆلێت', 'باس']
+export const BODY_TYPES = ['بەرز', 'نزم', 'پاس', 'پیکاب']
 export const FUELS = ['بەنزین', 'دیزەل', 'هایبرید', 'کارەبایی', 'گاز']
 export const TRANSMISSIONS = ['ئۆتۆماتیک', 'مانیوال', 'CVT', 'نیوە ئۆتۆماتیک']
 export const DRIVES = ['کشانی پێشەوە (FWD)', 'کشانی دواوە (RWD)', 'چوار کش (4WD/AWD)']
@@ -119,19 +119,19 @@ export interface BodyPart {
 }
 
 export const BODY_PARTS: BodyPart[] = [
-  { key: 'bumperF', ku: 'بەمپەری پێشەوە', group: 'front' },
-  { key: 'bonnet', ku: 'کاپۆت', group: 'front' },
-  { key: 'fenderFR', ku: 'گڵگیری پێشەوەی ڕاست', group: 'right' },
-  { key: 'fenderFL', ku: 'گڵگیری پێشەوەی چەپ', group: 'left' },
+  { key: 'bumperF', ku: 'دەعامی پێشەوە', group: 'front' },
+  { key: 'bonnet', ku: 'بۆنیت', group: 'front' },
+  { key: 'fenderFR', ku: 'چەمەڵەغی پێشەوەی ڕاست', group: 'right' },
+  { key: 'fenderFL', ku: 'چەمەڵەغی پێشەوەی چەپ', group: 'left' },
   { key: 'doorFR', ku: 'دەرگای پێشەوەی ڕاست', group: 'right' },
   { key: 'doorFL', ku: 'دەرگای پێشەوەی چەپ', group: 'left' },
   { key: 'doorRR', ku: 'دەرگای دواوەی ڕاست', group: 'right' },
   { key: 'doorRL', ku: 'دەرگای دواوەی چەپ', group: 'left' },
-  { key: 'quarterRR', ku: 'گڵگیری دواوەی ڕاست', group: 'right' },
-  { key: 'quarterRL', ku: 'گڵگیری دواوەی چەپ', group: 'left' },
+  { key: 'quarterRR', ku: 'چەمەڵەغی دواوەی ڕاست', group: 'right' },
+  { key: 'quarterRL', ku: 'چەمەڵەغی دواوەی چەپ', group: 'left' },
   { key: 'roof', ku: 'سەقف', group: 'top' },
   { key: 'trunk', ku: 'سندووق (شەنتە)', group: 'rear' },
-  { key: 'bumperR', ku: 'بەمپەری دواوە', group: 'rear' },
+  { key: 'bumperR', ku: 'دەعامی دواوە', group: 'rear' },
   { key: 'pillarR', ku: 'ستوونی ڕاست', group: 'struct' },
   { key: 'pillarL', ku: 'ستوونی چەپ', group: 'struct' },
   { key: 'chassis', ku: 'شاسی', group: 'struct' },
@@ -166,6 +166,13 @@ export const TX_CATEGORY_KU: Record<string, string> = {
   partner: 'پشکی شەریک',
   debt_in: 'وەرگرتنی قەرزی کۆن',
   debt_out: 'دانەوەی قەرزی کۆن',
+  exchange_transfer: 'گواستنەوە بۆ سەراف',
+  exchange_return: 'وەرگرتنەوە لە سەراف',
+  cash_exchange_out: 'ئیکسچێنج — دەرچوو',
+  cash_exchange_in: 'ئیکسچێنج — وەرگیراو',
+  contract_refund: 'گەڕاندنەوەی پارەی عەقد',
+  hawala: 'حەواڵەکردن',
+  hawala_cancel: 'هەڵوەشاندنەوەی حەواڵە',
   other: 'شتی تر',
 }
 
