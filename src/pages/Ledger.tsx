@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-  ArrowDownLeft, ArrowUpRight, Phone, MessageCircle, Printer, Download, Pencil,
+  ArrowDownLeft, ArrowUpRight, Phone, MessageCircle, Download, Pencil,
   Trash2, Wallet, Loader2, Check, Clock,
 } from 'lucide-react'
 import { useApp } from '../store/app'
@@ -9,7 +9,6 @@ import { PageHead } from '../components/Layout'
 import { Field, Segmented, Sheet, Switch, useConfirm } from '../components/ui'
 import { AccountForm } from './Debts'
 import { fmtDateShort, money, normalizePhone, todayISO, uid } from '../lib/format'
-import { downloadFile, toCsv } from '../lib/exportHtml'
 import { fx } from '../lib/feedback'
 import {
   toAccounts, balanceOf, statement, currenciesUsed, totals, nowTime,
@@ -70,26 +69,6 @@ export default function Ledger() {
     say('سڕایەوە', 'info')
   }
 
-  /* ── دەرهێنانی CSV ── */
-  const csv = () => {
-    const data = [
-      [`کشف حساب — ${acc.name}`, '', '', '', ''],
-      ['بەروار', 'کاتژمێر', 'وەرگیراو', 'دراو', 'باڵانس', 'تێبینی'],
-      ...rows.map((r) => [
-        r.date,
-        r.time,
-        r.kind === 'take' ? String(Math.round(r.amount)) : '',
-        r.kind === 'give' ? String(Math.round(r.amount)) : '',
-        String(Math.round(r.running)),
-        r.note || '',
-      ]),
-      [],
-      ['کۆی گشتی', '', String(Math.round(sum.took)), String(Math.round(sum.gave)), String(Math.round(b)), ''],
-    ]
-    downloadFile(`حساب-${acc.name}-${view}.csv`, '﻿' + toCsv(data), 'text/csv;charset=utf-8')
-    say('فایلەکە داگیرا')
-  }
-
   const wa = acc.phone ? normalizePhone(acc.phone) : ''
 
   return (
@@ -100,11 +79,9 @@ export default function Ledger() {
         back={() => nav('/debts')}
         action={
           <div className="flex gap-2">
-            <button onClick={csv} className="btn-ghost !px-3 no-print" title="Excel">
+            <button onClick={() => window.print()} className="btn-brand !px-3.5 no-print" title="داگرتنی PDF">
               <Download size={17} />
-            </button>
-            <button onClick={() => window.print()} className="btn-ghost !px-3 no-print" title="پرینت">
-              <Printer size={17} />
+              <span className="hidden sm:inline">PDF</span>
             </button>
             {editable && (
               <button onClick={() => setEditAcc(true)} className="btn-ghost !px-3 no-print" title="گۆڕین">
@@ -150,11 +127,15 @@ export default function Ledger() {
 
           <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-line text-[13px]">
             <div>
-              <p className="text-muted text-xs">کۆی وەرگیراو</p>
+              <p className="text-muted text-xs flex items-center justify-center gap-1">
+                <ArrowDownLeft size={12} className="text-ok" /> کۆی هاتوو
+              </p>
               <p className="font-bold num text-ok">{m(sum.took)}</p>
             </div>
             <div>
-              <p className="text-muted text-xs">کۆی دراو</p>
+              <p className="text-muted text-xs flex items-center justify-center gap-1">
+                <ArrowUpRight size={12} className="text-bad" /> کۆی ڕۆیشتوو
+              </p>
               <p className="font-bold num text-bad">{m(sum.gave)}</p>
             </div>
           </div>
@@ -207,8 +188,16 @@ export default function Ledger() {
               <div className="sm:hidden divide-y divide-line/60 print:hidden">
                 {rows.map((r) => (
                   <div key={r.id} className="px-4 py-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
+                    <div className="flex items-start gap-3">
+                      <span
+                        className={`w-9 h-9 rounded-xl grid place-items-center shrink-0 ${
+                          r.kind === 'take' ? 'bg-ok/15 text-ok' : 'bg-bad/15 text-bad'
+                        }`}
+                        title={r.kind === 'take' ? 'پارە هاتووە' : 'پارە ڕۆیشتووە'}
+                      >
+                        {r.kind === 'take' ? <ArrowDownLeft size={17} /> : <ArrowUpRight size={17} />}
+                      </span>
+                      <div className="min-w-0 grow">
                         <span className="num text-[13px] block">{fmtDateShort(r.date)}</span>
                         <span className="num text-[11px] text-muted flex items-center gap-1">
                           <Clock size={10} /> {r.time}
@@ -219,9 +208,14 @@ export default function Ledger() {
                           )}
                         </span>
                       </div>
-                      <span className={`num font-bold shrink-0 ${r.kind === 'take' ? 'text-ok' : 'text-bad'}`}>
-                        {r.kind === 'take' ? '+' : '−'}
-                        {m(r.amount)}
+                      <span className="text-end shrink-0">
+                        <span className={`num font-bold block ${r.kind === 'take' ? 'text-ok' : 'text-bad'}`}>
+                          {r.kind === 'take' ? '+' : '−'}
+                          {m(r.amount)}
+                        </span>
+                        <span className={`text-[10px] ${r.kind === 'take' ? 'text-ok' : 'text-bad'}`}>
+                          {r.kind === 'take' ? 'هاتووە' : 'ڕۆیشتووە'}
+                        </span>
                       </span>
                     </div>
 
@@ -264,8 +258,16 @@ export default function Ledger() {
                     <tr className="text-muted text-xs bg-surface2">
                       <th className="text-start font-medium px-3 py-2">بەروار و کات</th>
                       <th className="text-start font-medium px-3 py-2">تێبینی</th>
-                      <th className="text-end font-medium px-3 py-2">وەرگیراو</th>
-                      <th className="text-end font-medium px-3 py-2">دراو</th>
+                      <th className="text-end font-medium px-3 py-2">
+                        <span className="inline-flex items-center gap-1 text-ok">
+                          <ArrowDownLeft size={12} /> هاتووە
+                        </span>
+                      </th>
+                      <th className="text-end font-medium px-3 py-2">
+                        <span className="inline-flex items-center gap-1 text-bad">
+                          <ArrowUpRight size={12} /> ڕۆیشتووە
+                        </span>
+                      </th>
                       <th className="text-end font-medium px-3 py-2">باڵانس</th>
                       <th className="w-8 no-print" />
                     </tr>
@@ -274,9 +276,20 @@ export default function Ledger() {
                     {rows.map((r) => (
                       <tr key={r.id} className="border-t border-line/60">
                         <td className="px-3 py-2.5 whitespace-nowrap">
-                          <span className="num block">{fmtDateShort(r.date)}</span>
-                          <span className="num text-[11px] text-muted flex items-center gap-1">
-                            <Clock size={10} /> {r.time}
+                          <span className="flex items-center gap-2">
+                            <span
+                              className={`w-6 h-6 rounded-lg grid place-items-center shrink-0 ${
+                                r.kind === 'take' ? 'bg-ok/15 text-ok' : 'bg-bad/15 text-bad'
+                              }`}
+                            >
+                              {r.kind === 'take' ? <ArrowDownLeft size={13} /> : <ArrowUpRight size={13} />}
+                            </span>
+                            <span>
+                              <span className="num block">{fmtDateShort(r.date)}</span>
+                              <span className="num text-[11px] text-muted flex items-center gap-1">
+                                <Clock size={10} /> {r.time}
+                              </span>
+                            </span>
                           </span>
                         </td>
                         <td className="px-3 py-2.5">

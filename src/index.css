@@ -670,7 +670,22 @@
     border: 0 !important;
   }
   /* پادینگی دەرەوە لاببە، ئەگەرنا لاپەڕەی بەتاڵی دووەم دروست دەبێت */
-  body :has(> .print-area),
-  body :has(.print-area) { padding: 0 !important; margin: 0 !important; gap: 0 !important; }
+  /* پادینگی ڕەفەکانی دەرەوە لاببە — بە هەڵبژێری سادە،
+     چونکە :has() لەسەر سەفاری پرینت زۆر خاو دەکات */
+  main,
+  main > div,
+  main > div > div,
+  main > div > div > div { padding: 0 !important; margin: 0 !important; gap: 0 !important; }
   .print-area { padding: 0 !important; margin: 0 !important; overflow: visible !important; }
+
+  /* بلێر و سێبەر و ئەنیمەیشن لە پرینتدا زۆر گرانن — بەتایبەت لەسەر سەفاری مۆبایل */
+  * {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    animation: none !important;
+    transition: none !important;
+    filter: none !important;
+  }
 }

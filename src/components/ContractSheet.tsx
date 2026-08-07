@@ -151,7 +151,10 @@ function useOnePage(dep: unknown) {
     if (!el || !paper) return
 
     let raf = 0
+    let printing = false
     const measure = () => {
+      /* لە کاتی پرینتدا پێوانە ناکەین — ڕەندەری دووبارە خاوی دەکات */
+      if (printing) return
       const cs = getComputedStyle(paper)
       const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom)
       const avail = PAGE_H - pad - 4
@@ -170,16 +173,28 @@ function useOnePage(dep: unknown) {
     schedule()
     const ro = new ResizeObserver(schedule)
     ro.observe(el)
+    const onBefore = () => {
+      measure()
+      printing = true
+      ro.disconnect()
+    }
+    const onAfter = () => {
+      printing = false
+      ro.observe(el)
+      schedule()
+    }
+    window.addEventListener('beforeprint', onBefore)
+    window.addEventListener('afterprint', onAfter)
     /* دوای بارکردنی فۆنت و وێنەکان دووبارە دەپێوێت */
     const late = setTimeout(schedule, 700)
     document.fonts?.ready.then(schedule).catch(() => {})
-    window.addEventListener('beforeprint', measure)
 
     return () => {
       cancelAnimationFrame(raf)
       clearTimeout(late)
       ro.disconnect()
-      window.removeEventListener('beforeprint', measure)
+      window.removeEventListener('beforeprint', onBefore)
+      window.removeEventListener('afterprint', onAfter)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dep])
