@@ -200,12 +200,12 @@
   padding: 5.5mm 6mm;
   position: relative;
   font-family: Speda, 'Noto Naskh Arabic', 'Times New Roman', serif;
-  font-size: 8.7pt;
+  font-size: 10.27pt;
   line-height: 1.25;
 }
 .contract-head {
   display: grid;
-  grid-template-columns: 19mm minmax(0, 1fr) 33mm;
+  grid-template-columns: 19mm minmax(0, 1fr) 41mm;
   align-items: center;
   gap: 2.2mm;
   direction: ltr;
@@ -228,20 +228,20 @@
   min-width: 0;
 }
 .contract-head-kicker {
-  font-size: 7.1pt;
+  font-size: 8.38pt;
   color: #697789;
   margin: 0 0 0.4mm;
 }
 .contract-head-center h1 {
   font-family: Speda, 'Noto Kufi Arabic', sans-serif;
-  font-size: 15pt;
+  font-size: 17.7pt;
   font-weight: 800;
   line-height: 1.15;
   margin: 0;
 }
 .contract-head-subtitle {
   color: #a26b15;
-  font-size: 8.2pt;
+  font-size: 9.68pt;
   font-weight: 700;
   margin: 0.4mm 0 0;
 }
@@ -257,11 +257,12 @@
   background: transparent;
   padding: 0;
   min-width: auto;
-  font-size: 7.1pt;
+  font-size: 8.38pt;
 }
 .contract-head-meta .contract-line-value {
   min-height: 3.7mm;
-  font-size: 7.3pt;
+  font-size: 8.61pt;
+  white-space: nowrap;
 }
 .contract-divider {
   height: 0.65mm;
@@ -289,7 +290,7 @@
   display: flex;
   align-items: center;
   font-family: Speda, 'Noto Kufi Arabic', sans-serif;
-  font-size: 8pt;
+  font-size: 9.44pt;
   font-weight: 700;
   line-height: 1.15;
 }
@@ -325,7 +326,7 @@
   border-radius: 1mm;
   padding: 0.55mm 1.5mm 0.65mm;
   font-family: Speda, 'Noto Kufi Arabic', sans-serif;
-  font-size: 6.8pt;
+  font-size: 8.02pt;
   font-weight: 700;
   line-height: 1.1;
 }
@@ -359,7 +360,7 @@
   letter-spacing: 0.1em;
   text-align: left;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 8pt;
+  font-size: 9.44pt;
 }
 .contract-condition-body {
   min-height: 6mm;
@@ -380,7 +381,7 @@
   background: transparent;
   border: 1px solid var(--contract-line);
   border-right: 0.8mm solid var(--contract-gold);
-  font-size: 7pt;
+  font-size: 8.26pt;
 }
 .contract-condition-item span {
   padding: 0.45mm 1.2mm 0.55mm;
@@ -388,13 +389,13 @@
   color: #675019;
   background: #fff0cb;
   font-weight: 700;
-  font-size: 7pt;
+  font-size: 8.26pt;
 }
 .contract-condition-note {
   margin: 0.6mm 0 0;
   padding-top: 0.7mm;
   border-top: 1px dotted #aeb9c6;
-  font-size: 7.5pt;
+  font-size: 8.85pt;
 }
 .contract-payment-grid {
   display: grid;
@@ -413,18 +414,18 @@
 .contract-price span,
 .contract-words b {
   color: #806325;
-  font-size: 7pt;
+  font-size: 8.26pt;
 }
 .contract-price strong {
   color: var(--contract-ink);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12pt;
+  font-size: 14.16pt;
   line-height: 1;
 }
 .contract-words {
   align-self: center;
   padding: 1.2mm 2mm;
-  font-size: 8pt;
+  font-size: 9.44pt;
   line-height: 1.3;
 }
 .contract-payment-detail {
@@ -435,7 +436,7 @@
   padding: 1mm 2mm 1.1mm;
   border-top: 1px solid #e7d7b8;
   background: #fffdf8;
-  font-size: 7.6pt;
+  font-size: 8.97pt;
 }
 /* لیستی قیستەکان — کاتێک زۆرن، دەبنە دوو یان سێ ستوون تا خشتەیەکی
    درێژ هەموو عەقدەکە بچووک نەکاتەوە */
@@ -453,11 +454,11 @@
 .contract-inst-2 .contract-installments,
 .contract-inst-3 .contract-installments {
   border: 1px solid var(--contract-line);
-  font-size: 7pt;
+  font-size: 8.26pt;
 }
 .contract-inst-2 .contract-installments th,
 .contract-inst-2 .contract-installments td { padding: 0.6mm 1mm; }
-.contract-inst-3 .contract-installments { font-size: 6.6pt; }
+.contract-inst-3 .contract-installments { font-size: 7.79pt; }
 .contract-inst-3 .contract-installments th,
 .contract-inst-3 .contract-installments td { padding: 0.5mm 0.7mm; }
 .contract-inst-2 .contract-installments td:last-child { min-width: 13mm; }
@@ -466,14 +467,14 @@
   width: 100%;
   border-collapse: collapse;
   background: var(--contract-paper);
-  font-size: 7.7pt;
+  font-size: 9.09pt;
 }
 .contract-installments th {
   color: var(--contract-ink);
   background: var(--contract-tint);
   border-bottom: 0.8mm solid var(--contract-gold);
   font-family: Speda, 'Noto Kufi Arabic', sans-serif;
-  font-size: 6.8pt;
+  font-size: 8.02pt;
 }
 .contract-installments th,
 .contract-installments td {
@@ -503,13 +504,13 @@
   color: var(--contract-ink);
   background: var(--contract-gold);
   font-family: Speda, 'Noto Kufi Arabic', sans-serif;
-  font-size: 7.2pt;
+  font-size: 8.5pt;
   font-weight: 800;
 }
 .contract-terms ol {
   margin: 0;
   padding: 0 3mm 0 0;
-  font-size: 7.2pt;
+  font-size: 8.5pt;
   line-height: 1.36;
 }
 .contract-terms li::marker { color: var(--contract-gold); }
@@ -518,13 +519,13 @@
   padding: 1mm 1.8mm;
   border-right: 1mm solid var(--contract-gold);
   background: var(--contract-tint);
-  font-size: 7.5pt;
+  font-size: 8.85pt;
 }
 .contract-consent {
   margin: 1.5mm 0 0;
   text-align: center;
   color: #555;
-  font-size: 7pt;
+  font-size: 8.26pt;
 }
 .contract-signatures {
   display: grid;
@@ -547,18 +548,18 @@
   flex: none;
   color: var(--contract-ink);
   font-family: Speda, 'Noto Kufi Arabic', sans-serif;
-  font-size: 7.2pt;
+  font-size: 8.5pt;
 }
 .contract-sign-person > span {
   min-width: 0;
   color: var(--contract-ink);
   font-weight: 800;
-  font-size: 8.2pt;
+  font-size: 9.68pt;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.contract-sign-person small { color: #697789; font-weight: 500; font-size: 6.8pt; }
+.contract-sign-person small { color: #697789; font-weight: 500; font-size: 8.02pt; }
 .contract-sign-actions {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 17mm;
@@ -577,7 +578,7 @@
   width: 100%;
   text-align: center;
   color: #555;
-  font-size: 6.2pt;
+  font-size: 7.32pt;
 }
 .contract-fingerprint {
   width: 14mm;
@@ -618,9 +619,9 @@
   background: var(--contract-tint);
   border: 1px solid var(--contract-line);
   border-top: 0.8mm solid var(--contract-gold);
-  font-size: 6.6pt;
+  font-size: 7.79pt;
 }
-.contract-footer b { color: #806325; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 8pt; }
+.contract-footer b { color: #806325; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9.44pt; }
 .contract-promo-link {
   display: flex;
   flex-wrap: wrap;
@@ -708,22 +709,42 @@
   background: var(--contract-tint);
   border-left: 1px solid #e7d7b8;
 }
-.broker-fee-amount span { color: #6b5a33; font-size: 7pt; }
-.broker-fee-amount strong { color: var(--contract-ink); font-size: 13pt; font-weight: 800; line-height: 1.1; }
+.broker-fee-amount span { color: #6b5a33; font-size: 8.26pt; }
+.broker-fee-amount strong { color: var(--contract-ink); font-size: 15.34pt; font-weight: 800; line-height: 1.1; }
 .broker-fee-side {
   display: grid;
   align-content: center;
   gap: 0.5mm;
   padding: 1.2mm 2.2mm;
-  font-size: 7.4pt;
+  font-size: 8.73pt;
 }
-.broker-fee-side b { font-family: Speda, 'Noto Kufi Arabic', sans-serif; font-size: 8pt; }
+.broker-fee-side b { font-family: Speda, 'Noto Kufi Arabic', sans-serif; font-size: 9.44pt; }
 .broker-fee-side span { color: #697789; }
 /* سێ واژوو لە جیاتی دوو */
 .broker-signatures { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3mm; }
 .broker-signatures .contract-sign-actions { grid-template-columns: minmax(0, 1fr) 13mm; gap: 1.4mm; }
 .broker-signatures .contract-fingerprint { width: 11mm; height: 11mm; }
-.broker-signatures .contract-sign-person > span { font-size: 7.6pt; }
+.broker-signatures .contract-sign-person > span { font-size: 8.97pt; }
+
+/* ── ناونیشانی پێشانگا — یەک جار، لە خوارەوەی عەقدەکە ── */
+.contract-shopline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8mm 4mm;
+  margin-top: 3mm;
+  padding: 1.4mm 2mm;
+  border-top: 1px solid var(--contract-line);
+  border-bottom: 1px solid var(--contract-line);
+  color: var(--contract-ink);
+  font-size: 8.6pt;
+}
+.contract-shopline b {
+  font-family: Speda, 'Noto Kufi Arabic', sans-serif;
+  font-size: 9.2pt;
+}
+.contract-shopline span { color: #4b5563; }
 
 /* ── دڵنیابوونەوە لەوەی عەقدەکە یەک لاپەڕە بە تەواوی پڕ دەکاتەوە ── */
 .contract-fit { overflow: hidden; }

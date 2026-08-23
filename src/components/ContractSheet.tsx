@@ -265,11 +265,16 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
 
   /* لیستی قیستەکان لە چەند ستوونێکدا — ئەگەرنا خشتەیەکی درێژ هەموو
      عەقدەکە بچووک دەکاتەوە و نەخوێندراوە دەبێت */
-  const instCols = c.installments.length <= 10 ? 1 : c.installments.length <= 24 ? 2 : 3
+  const instCols = c.installments.length <= 8 ? 1 : c.installments.length <= 20 ? 2 : 3
   const perCol = Math.ceil(c.installments.length / instCols) || 1
   const instChunks = Array.from({ length: instCols }, (_, i) =>
     c.installments.slice(i * perCol, (i + 1) * perCol),
   ).filter((x) => x.length)
+
+  /* پێشانگا خۆی یەکێکە لە لایەنەکان — ناونیشانەکەی لە خوارەوە دێت،
+     بۆیە لە بۆکسی ئەو لایەنەدا دووبارەی ناکەینەوە */
+  const shopSide: 'seller' | 'buyer' = c.type === 'purchase' ? 'buyer' : 'seller'
+  const shopAddress = [s.city, s.address].filter(Boolean).join(' — ')
 
   const { inner, k, h, avail, gap } = useOnePage(`${c.id}|${lang}|${terms.length}|${c.installments.length}`)
   const shrink = k < 1
@@ -287,7 +292,6 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
           {s.logo ? <img src={s.logo} alt="" /> : <AutoMark />}
         </div>
         <div className="contract-head-center" dir="rtl">
-          <p className="contract-head-kicker">{[s.city, s.address].filter(Boolean).join(' — ') || 'پێشانگای ئۆتۆمبێل'}</p>
           <h1>{showroom}</h1>
           <p className="contract-head-subtitle">{t.title}</p>
         </div>
@@ -304,14 +308,14 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
         <Party title={t.seller} rows={[
           { label: t.name, value: c.seller.name },
           { label: t.phone, value: <span className="num">{c.seller.phone}</span> },
-          { label: t.address, value: c.seller.address },
+          ...(shopSide === 'seller' ? [] : [{ label: t.address, value: c.seller.address }]),
         ]} />
         <Party title={t.buyer} rows={[
           { label: t.name, value: c.buyer.name },
           { label: t.phone, value: <span className="num">{c.buyer.phone}</span> },
           { label: t.idNo, value: <span className="num">{c.buyer.idNumber}</span> },
           { label: t.issuer, value: c.buyer.idIssuer },
-          { label: t.address, value: c.buyer.address },
+          ...(shopSide === 'buyer' ? [] : [{ label: t.address, value: c.buyer.address }]),
         ]} />
       </div>
 
@@ -433,6 +437,13 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
           ))}
         </section>
       )}
+
+      <section className="contract-shopline avoid-break">
+        <b>{showroom}</b>
+        {shopAddress && <span>{shopAddress}</span>}
+        {s.phone && <span className="num" dir="ltr">{s.phone}</span>}
+        {s.phone2 && <span className="num" dir="ltr">{s.phone2}</span>}
+      </section>
 
       <footer className="contract-footer">
         <a href="https://www.instagram.com/dlo_.it/" target="_blank" rel="noreferrer" className="contract-promo-link">

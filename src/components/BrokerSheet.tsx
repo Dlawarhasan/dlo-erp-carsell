@@ -60,6 +60,8 @@ export function BrokerSheet({ d, s, lang = 'ku' }: { d: BrokerDeal; s: Settings;
   const showroom = lang === 'ku' ? s.showroomName : s.showroomNameAr || s.showroomName
   const terms = d.terms?.length ? d.terms : lang === 'ku' ? s.terms : s.termsAr || []
 
+  const shopAddress = [s.city, s.address].filter(Boolean).join(' — ')
+
   const { inner, k, h, avail, gap } = useOnePage(`${d.id}|${lang}|${terms.length}`)
   const shrink = k < 1
 
@@ -74,7 +76,6 @@ export function BrokerSheet({ d, s, lang = 'ku' }: { d: BrokerDeal; s: Settings;
         <header className="contract-head">
           <div className="contract-logo" dir="ltr">{s.logo ? <img src={s.logo} alt="" /> : <AutoMark />}</div>
           <div className="contract-head-center" dir="rtl">
-            <p className="contract-head-kicker">{[s.city, s.address].filter(Boolean).join(' — ') || 'پێشانگای ئۆتۆمبێل'}</p>
             <h1>{showroom}</h1>
             <p className="contract-head-subtitle">{t.title}</p>
           </div>
@@ -181,6 +182,13 @@ export function BrokerSheet({ d, s, lang = 'ku' }: { d: BrokerDeal; s: Settings;
               .map((w) => <Line key={w.label} label={w.label}>{w.name}</Line>)}
           </section>
         )}
+
+        <section className="contract-shopline avoid-break">
+          <b>{showroom}</b>
+          {shopAddress && <span>{shopAddress}</span>}
+          {s.phone && <span className="num" dir="ltr">{s.phone}</span>}
+          {s.phone2 && <span className="num" dir="ltr">{s.phone2}</span>}
+        </section>
 
         <footer className="contract-footer">
           <a href="https://www.instagram.com/dlo_.it/" target="_blank" rel="noreferrer" className="contract-promo-link">
