@@ -2,19 +2,21 @@ import { useCallback, useState } from 'react'
 import { NavLink, useNavigate, useLocation, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard, Car, FileText, Wallet, Users, ShieldCheck, Settings as Cog,
-  ScanLine, MoreHorizontal, LogOut, Sun, Moon, UserCog, History, CloudOff, Cloud, Handshake, NotebookPen, ArrowLeftRight, Send, X, BarChart3, Receipt, Search,
+  ScanLine, MoreHorizontal, LogOut, Sun, Moon, UserCog, History, CloudOff, Cloud, Handshake, NotebookPen, ArrowLeftRight, Send, X, BarChart3, Receipt, Search, Sparkles,
 } from 'lucide-react'
 import { useApp } from '../store/app'
 import { Toasts } from './ui'
 import { ShowroomMark } from './Brand'
 import { Portal } from './Portal'
 import { CommandPalette, useCommandKey } from './CommandPalette'
+import { Assistant } from './Assistant'
 import dloLogo from '../assets/dlo-it-logo.png'
 
 const NAV = [
   { to: '/', icon: LayoutDashboard, label: 'داشبۆرد', end: true },
   { to: '/cars', icon: Car, label: 'ئۆتۆمبێلەکان' },
   { to: '/contracts', icon: FileText, label: 'عەقدەکان' },
+  { to: '/brokers', icon: Handshake, label: 'عەقدی دەرەکی', cap: 'money.view' as const },
   { to: '/accounting', icon: Wallet, label: 'حسابات', cap: 'money.view' as const },
   { to: '/expenses', icon: Receipt, label: 'مەسروفات', cap: 'money.view' as const },
   { to: '/reports', icon: BarChart3, label: 'راپۆرت و کەشف حساب', cap: 'money.view' as const },
@@ -35,6 +37,7 @@ export function Layout() {
   const { user, can, signOut, toast, drop, mode, settings } = useApp()
   const [more, setMore] = useState(false)
   const [cmd, setCmd] = useState(false)
+  const [bot, setBot] = useState(false)
   const nav = useNavigate()
   const loc = useLocation()
   const [theme, setTheme] = useState(() => localStorage.getItem('gm.theme') || 'light')
@@ -70,7 +73,14 @@ export function Layout() {
             </div>
           </div>
         </div>
-        <div className="px-3 pt-3">
+        <div className="px-3 pt-3 space-y-2">
+          <button
+            onClick={() => setBot(true)}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-brand/12 border border-brand/25 text-brand hover:bg-brand/20 transition text-[14px] font-medium"
+          >
+            <Sparkles size={17} />
+            <span className="grow text-start">یاریدەدەر</span>
+          </button>
           <button
             onClick={() => setCmd(true)}
             className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-surface2 border border-line text-muted hover:text-ink hover:border-brand/40 transition text-[14px]"
@@ -168,6 +178,13 @@ export function Layout() {
               </button>
             </div>
             <button
+              onClick={() => { setMore(false); setBot(true) }}
+              className="w-full flex items-center gap-2.5 px-3.5 py-3 mb-2 rounded-2xl bg-brand/12 border border-brand/25 text-brand text-[14px] font-medium"
+            >
+              <Sparkles size={18} />
+              <span className="grow text-start">یاریدەدەر — هەرچی پرسیارت هەیە لێم بپرسە</span>
+            </button>
+            <button
               onClick={() => { setMore(false); setCmd(true) }}
               className="w-full flex items-center gap-2.5 px-3.5 py-3 mb-2.5 rounded-2xl bg-surface2 border border-line text-muted text-[14px]"
             >
@@ -200,7 +217,22 @@ export function Layout() {
         </Portal>
       )}
 
+      {/* ============ دوگمەی یاریدەدەر ============ */}
+      {!bot && (
+        <button
+          onClick={() => setBot(true)}
+          aria-label="یاریدەدەر"
+          className="fixed z-50 end-4 sm:end-6 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-6
+            w-13 h-13 rounded-2xl bg-brand text-brandInk grid place-items-center shadow-pop
+            border-4 border-bg no-print transition hover:scale-105 active:scale-95"
+          style={{ width: 54, height: 54 }}
+        >
+          <Sparkles size={22} />
+        </button>
+      )}
+
       <CommandPalette open={cmd} onClose={() => setCmd(false)} />
+      <Assistant open={bot} onClose={() => setBot(false)} />
       <Toasts items={toast} onDrop={drop} />
     </div>
   )

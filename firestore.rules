@@ -19,6 +19,7 @@ service cloud.firestore {
     match /cars/{id}      { allow read: if active(); allow write: if canWrite(); }
     match /customers/{id} { allow read: if active(); allow write: if canWrite(); }
     match /contracts/{id} { allow read: if active(); allow create, update: if canWrite(); allow delete: if isBoss(); }
+    match /brokers/{id}   { allow read: if active(); allow create, update: if canWrite(); allow delete: if isBoss(); }
     match /txs/{id}       { allow read: if active(); allow create, update: if canWrite(); allow delete: if isBoss(); }
     match /debts/{id}     { allow read: if active(); allow create, update: if canWrite(); allow delete: if isBoss(); }
     match /exchangers/{id}{ allow read: if active(); allow create, update: if canWrite(); allow delete: if isBoss(); }

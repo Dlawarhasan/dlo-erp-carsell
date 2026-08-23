@@ -258,6 +258,53 @@ export interface Settings {
   expenseTemplates?: ExpenseTemplate[]
 }
 
+/* ═══════════════ عەقدی دەرەکی (دەلاڵی) ═══════════════ */
+
+/**
+ * مامەڵەیەک لە نێوان دوو کەسی دەرەکی کە لە پێشانگاکەماندا ئەنجام دەدرێت.
+ * ئێمە لایەنی مامەڵەکە نین — تەنها ناوبژیوانین و عمولەیەک وەردەگرین.
+ * ئەو عمولەیە **قازانجی ساف**ە، چونکە هیچ تێچوویەکی لەسەر نییە.
+ */
+export interface BrokerDeal {
+  id: string
+  no: string
+  date: string
+  /** فرۆشیاری دەرەکی — خاوەنی ئۆتۆمبێلەکە */
+  seller: ContractParty
+  /** کڕیاری دەرەکی */
+  buyer: ContractParty
+  car: {
+    brand: string
+    model: string
+    year?: number
+    color?: string
+    plate?: string
+    vin?: string
+    km?: number
+    bodyType?: string
+    fuel?: string
+    transmission?: string
+    note?: string
+  }
+  /** نرخی ڕێککەوتن لە نێوان هەردوولا — پارەکە بە دەستی ئێمەدا تێناپەڕێت */
+  price: number
+  currency: Currency
+  rate: number
+  /** عمولەی ئێمە — دەکرێت سفر بێت */
+  fee: number
+  feeCurrency: Currency
+  feeAccount: 'cash' | 'bank'
+  /** ناسنامەی مامەڵەی سندوقی عمولەکە */
+  txId?: string
+  terms: string[]
+  note?: string
+  witness1?: string
+  witness2?: string
+  status: 'active' | 'cancelled'
+  createdAt: number
+  createdBy?: string
+}
+
 /** قاڵبی خەرجییەکی دووبارەبووەوە (کرێ، مووچە، ئینتەرنێت…) */
 export interface ExpenseTemplate {
   id: string

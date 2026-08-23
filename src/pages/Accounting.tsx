@@ -26,7 +26,7 @@ type CashExchangeForm = {
 
 export default function Accounting() {
   const nav = useNavigate()
-  const { txs, cars, contracts, debts, exchangers, hawalas, settings, save, commit, remove, log, say, can, user } = useApp()
+  const { txs, cars, contracts, brokers, debts, exchangers, hawalas, settings, save, commit, remove, log, say, can, user } = useApp()
   const { ask, node } = useConfirm()
   const [tab, setTab] = useState<'sum' | 'cash' | 'debt' | 'profit'>('sum')
   const [cur, setCur] = useState<Currency>('USD')
@@ -48,6 +48,14 @@ export default function Accounting() {
   const cashUsd = useMemo(() => cashBalance(txs, 'USD'), [txs])
   const cashIqd = useMemo(() => cashBalance(txs, 'IQD'), [txs])
   const prof = useMemo(() => profitInRange(cars, txs, contracts, cur, rate, from, to), [cars, txs, contracts, cur, rate, from, to])
+  /* عمولەی عەقدی دەرەکی — قازانجی ساف، هیچ تێچوویەکی لەسەر نییە */
+  const brokerFee = useMemo(
+    () =>
+      brokers
+        .filter((d) => d.status !== 'cancelled' && d.date >= from && d.date <= to)
+        .reduce((s2, d) => s2 + convert(d.fee, d.feeCurrency, cur, d.rate || rate), 0),
+    [brokers, from, to, cur, rate],
+  )
   const dues = useMemo(() => openInstallments(contracts), [contracts])
   const overdue = dues.filter((d) => d.overdue)
 
@@ -235,7 +243,7 @@ export default function Accounting() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <Stat label="داهاتی ماوەکە" value={<span className="num">{money(bRange.in, cur)}</span>} tone="ok" icon={<ArrowDownLeft size={16} />} />
               <Stat label="خەرجی ماوەکە" value={<span className="num">{money(bRange.out, cur)}</span>} tone="bad" icon={<ArrowUpRight size={16} />} />
-              <Stat label="قازانجی فرۆشراوەکان" value={<span className="num">{money(prof.profit, cur)}</span>} sub={<><span className="num">{prof.count}</span> ئۆتۆمبێل</>} tone="brand" icon={<TrendingUp size={16} />} />
+              <Stat label="قازانجی گشتی" value={<span className="num">{money(prof.profit + brokerFee, cur)}</span>} sub={<><span className="num">{prof.count}</span> ئۆتۆمبێل{brokerFee > 0 ? <> · عمولە <span className="num">{money(brokerFee, cur)}</span></> : null}</>} tone="brand" icon={<TrendingUp size={16} />} />
               <Stat label="باڵانسی گشتی" value={<span className="num">{money(bAll.total, cur)}</span>} sub={<>کاش <span className="num">{money(bAll.cash, cur)}</span> · بانک <span className="num">{money(bAll.bank, cur)}</span></>} tone={bAll.total >= 0 ? 'ink' : 'bad'} icon={<Banknote size={16} />} />
             </div>
 

@@ -121,7 +121,7 @@ const STATE_AR: Record<string, string> = {
   original: 'أصلي', painted: 'مصبوغ', putty: 'معجون', replaced: 'مستبدل', dented: 'مضروب', scratched: 'خدش',
 }
 
-function AutoMark() {
+export function AutoMark() {
   return (
     <svg viewBox="0 0 116 82" aria-hidden="true" className="w-full h-full">
       <path d="M12 26C30 9 83 7 105 26v33c-16 13-77 15-93 0V26Z" fill="none" stroke="currentColor" strokeWidth="4" />
@@ -135,15 +135,22 @@ function AutoMark() {
 
 /** بەرزی ناوەوەی A4 بە پیکسل — (297mm − ٢×10mm مارجن) لە ٩٦dpi */
 const PAGE_H = ((297 - 20) / 25.4) * 96
+/** زۆرترین بۆشایی نێوان بەشەکان کاتێک لاپەڕەکە پڕ نابێتەوە (≈٧mm) */
+const MAX_GAP = (7 / 25.4) * 96
 
 /**
- * دڵنیادەبێتەوە لەوەی عەقدەکە هەمیشە لە *یەک* لاپەڕەدا جێدەبێتەوە.
- * بەرزی ناوەڕۆک دەپێوێت و ئەگەر لە لاپەڕەکە تێپەڕی، بە ڕێژەیەکی
- * وردەوە بچووکی دەکاتەوە. ئەگەر جێبووەوە، هیچ ناگۆڕێت.
+ * دڵنیادەبێتەوە لەوەی عەقدەکە هەمیشە *بە تەواوی* یەک لاپەڕە پڕ دەکاتەوە.
+ *
+ *   • ناوەڕۆک زۆر بوو  → بە ڕێژەیەکی وردەوە بچووک دەکرێتەوە تا جێدەبێتەوە
+ *   • ناوەڕۆک کەم بوو  → بۆشاییەکە بەسەر بەشەکاندا دابەش دەکرێت و
+ *                        بەشی واژووەکان دەچێتە خوارەوەی لاپەڕەکە
+ *
+ * پێوانەکە هەمیشە لەسەر بەرزیی *سروشتی* دەکرێت (بۆشایی و کەمترین بەرزی
+ * بۆ ساتێک لادەبرێن)، ئەگەرنا پێوانە و ئەنجام دەکەونە بازنەیەکی داخراوەوە.
  */
-function useOnePage(dep: unknown) {
+export function useOnePage(dep: unknown) {
   const inner = useRef<HTMLDivElement>(null)
-  const [fit, setFit] = useState({ k: 1, h: 0 })
+  const [fit, setFit] = useState({ k: 1, h: 0, avail: 0, gap: 0 })
 
   useLayoutEffect(() => {
     const el = inner.current
@@ -152,20 +159,41 @@ function useOnePage(dep: unknown) {
 
     let raf = 0
     let printing = false
+    let busy = false
+
     const measure = () => {
       /* لە کاتی پرینتدا پێوانە ناکەین — ڕەندەری دووبارە خاوی دەکات */
       if (printing) return
       const cs = getComputedStyle(paper)
       const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom)
       const avail = PAGE_H - pad - 4
-      /* transform کاریگەری لەسەر scrollHeight نییە، بۆیە پێوانەکە هەمیشە خاوێنە */
+
+      /* بەرزیی سروشتی — بێ بۆشایی و بێ کەمترین بەرزی */
+      busy = true
+      const gapPrev = el.style.rowGap
+      const minPrev = el.style.minHeight
+      el.style.rowGap = '0px'
+      el.style.minHeight = '0px'
+      /* transform کاریگەری لەسەر scrollHeight نییە، بۆیە پێوانەکە خاوێنە */
       const h = el.scrollHeight
+      el.style.rowGap = gapPrev
+      el.style.minHeight = minPrev
+      requestAnimationFrame(() => { busy = false })
+
       if (!h) return
       const k = h > avail ? Math.max(0.5, avail / h) : 1
-      setFit((p) => (Math.abs(p.k - k) > 0.002 || Math.abs(p.h - h) > 1 ? { k, h } : p))
+      const slots = Math.max(1, el.children.length - 1)
+      const gap = k < 1 ? 0 : Math.min(MAX_GAP, Math.max(0, avail - h) / slots)
+      setFit((p) =>
+        Math.abs(p.k - k) > 0.002 || Math.abs(p.h - h) > 1 ||
+        Math.abs(p.gap - gap) > 0.5 || Math.abs(p.avail - avail) > 1
+          ? { k, h, avail, gap }
+          : p,
+      )
     }
 
     const schedule = () => {
+      if (busy) return
       cancelAnimationFrame(raf)
       raf = requestAnimationFrame(measure)
     }
@@ -202,11 +230,11 @@ function useOnePage(dep: unknown) {
   return { inner, ...fit }
 }
 
-function SectionTitle({ children }: { children: ReactNode }) {
+export function SectionTitle({ children }: { children: ReactNode }) {
   return <div className="contract-section-title"><span>{children}</span></div>
 }
 
-function Line({ label, children, className = '' }: { label: string; children?: ReactNode; className?: string }) {
+export function Line({ label, children, className = '' }: { label: string; children?: ReactNode; className?: string }) {
   return (
     <div className={`contract-line ${className}`}>
       <span className="contract-line-label">{label}</span>
@@ -215,7 +243,7 @@ function Line({ label, children, className = '' }: { label: string; children?: R
   )
 }
 
-function Party({ title, rows }: { title: string; rows: { label: string; value?: ReactNode }[] }) {
+export function Party({ title, rows }: { title: string; rows: { label: string; value?: ReactNode }[] }) {
   return (
     <section className="contract-party">
       <SectionTitle>{title}</SectionTitle>
@@ -235,12 +263,25 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
   const terms = lang === 'ku' ? (c.terms?.length ? c.terms : s.terms) : s.termsAr || []
   const showroom = lang === 'ku' ? s.showroomName : s.showroomNameAr || s.showroomName
 
-  const { inner, k, h } = useOnePage(`${c.id}|${lang}|${terms.length}|${c.installments.length}`)
+  /* لیستی قیستەکان لە چەند ستوونێکدا — ئەگەرنا خشتەیەکی درێژ هەموو
+     عەقدەکە بچووک دەکاتەوە و نەخوێندراوە دەبێت */
+  const instCols = c.installments.length <= 10 ? 1 : c.installments.length <= 24 ? 2 : 3
+  const perCol = Math.ceil(c.installments.length / instCols) || 1
+  const instChunks = Array.from({ length: instCols }, (_, i) =>
+    c.installments.slice(i * perCol, (i + 1) * perCol),
+  ).filter((x) => x.length)
+
+  const { inner, k, h, avail, gap } = useOnePage(`${c.id}|${lang}|${terms.length}|${c.installments.length}`)
+  const shrink = k < 1
 
   return (
     <article className="print-sheet contract-paper bg-white text-black font-doc mx-auto shadow-card print:shadow-none" dir="rtl">
-     <div className="contract-fit" style={k < 1 ? { height: Math.ceil(h * k) } : undefined}>
-      <div ref={inner} className="contract-fit-in" style={k < 1 ? { transform: `scale(${k})` } : undefined}>
+     <div className="contract-fit" style={shrink ? { height: Math.ceil(h * k) } : undefined}>
+      <div
+        ref={inner}
+        className="contract-fit-in"
+        style={shrink ? { transform: `scale(${k})` } : { minHeight: avail || undefined, rowGap: gap || undefined }}
+      >
       <header className="contract-head">
         <div className="contract-logo" dir="ltr">
           {s.logo ? <img src={s.logo} alt="" /> : <AutoMark />}
@@ -335,17 +376,21 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
       {c.payment === 'installment' && c.installments.length > 0 && (
         <section className="contract-section avoid-break">
           <SectionTitle>{t.instTable}</SectionTitle>
-          <table className="contract-installments">
-            <thead><tr><th>{t.instNo}</th><th>{t.due}</th><th>{t.amount}</th><th>{t.sign}</th></tr></thead>
-            <tbody>{c.installments.map((i) => (
-              <tr key={i.no}>
-                <td><span className="num">{i.no}</span></td>
-                <td><span className="num">{fmtDateShort(i.dueDate)}</span></td>
-                <td><b className="num">{money(i.amount, c.currency)}</b></td>
-                <td />
-              </tr>
-            ))}</tbody>
-          </table>
+          <div className={`contract-inst-grid contract-inst-${instCols}`}>
+            {instChunks.map((rows, ci) => (
+              <table className="contract-installments" key={ci}>
+                <thead><tr><th>{t.instNo}</th><th>{t.due}</th><th>{t.amount}</th><th>{t.sign}</th></tr></thead>
+                <tbody>{rows.map((i) => (
+                  <tr key={i.no}>
+                    <td><span className="num">{i.no}</span></td>
+                    <td><span className="num">{fmtDateShort(i.dueDate)}</span></td>
+                    <td><b className="num">{money(i.amount, c.currency)}</b></td>
+                    <td />
+                  </tr>
+                ))}</tbody>
+              </table>
+            ))}
+          </div>
         </section>
       )}
 
@@ -356,6 +401,9 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
 
       {c.note && <p className="contract-note avoid-break"><b>{t.note}:</b> {c.note}</p>}
       <p className="contract-consent avoid-break">{t.footer}</p>
+
+      {/* بۆشاییەکەی ماوە دەخاتە ژوورەوە تا واژووەکان بچنە خوارەوەی لاپەڕەکە */}
+      <div className="contract-spacer" aria-hidden="true" />
 
       <section className="contract-signatures avoid-break">
         {[

@@ -33,6 +33,7 @@ const PAGES: { label: string; to: string; icon: React.ReactNode; keys: string }[
   { label: 'ئۆتۆمبێلی نوێ', to: '/cars/new', icon: <Plus size={17} />, keys: 'new car زیادکردن سەیارە' },
   { label: 'سکانی VIN', to: '/scan', icon: <ScanLine size={17} />, keys: 'scan vin شانسی' },
   { label: 'عەقدەکان', to: '/contracts', icon: <FileText size={17} />, keys: 'contracts گرێبەست' },
+  { label: 'عەقدی دەرەکی', to: '/brokers', icon: <Handshake size={17} />, keys: 'broker دەلاڵی ناوبژیوان عمولە' },
   { label: 'حسابات', to: '/accounting', icon: <Wallet size={17} />, keys: 'accounting سندوق پارە' },
   { label: 'مەسروفات', to: '/expenses', icon: <Receipt size={17} />, keys: 'expenses خەرجی' },
   { label: 'ڕاپۆرت و کەشف حساب', to: '/reports', icon: <BarChart3 size={17} />, keys: 'reports راپۆرت' },
@@ -61,7 +62,7 @@ const norm = (s: string) =>
 
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const nav = useNavigate()
-  const { cars, customers, contracts, debts, settings, can } = useApp()
+  const { cars, customers, contracts, brokers, debts, settings, can } = useApp()
   const [q, setQ] = useState('')
   const [sel, setSel] = useState(0)
   const box = useRef<HTMLInputElement>(null)
@@ -165,8 +166,24 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       if (out.length > 150) break
     }
 
+    /* ── عەقدی دەرەکی ── */
+    for (const d of brokers) {
+      const hay = norm(`${d.no} ${d.seller.name} ${d.buyer.name} ${d.car.brand} ${d.car.model} ${d.car.plate || ''}`)
+      if (!hay.includes(nq)) continue
+      out.push({
+        id: 'b' + d.id,
+        group: 'عەقدی دەرەکی',
+        icon: <Handshake size={17} />,
+        title: `${d.seller.name} ← ${d.buyer.name}`,
+        sub: [d.no, d.car.brand, d.car.model].filter(Boolean).join(' · '),
+        meta: money_ && d.fee > 0 ? `عمولە ${money(d.fee, d.feeCurrency)}` : undefined,
+        to: `/brokers/${d.id}`,
+      })
+      if (out.length > 170) break
+    }
+
     return out.slice(0, 40)
-  }, [q, cars, customers, contracts, debts, can])
+  }, [q, cars, customers, contracts, brokers, debts, can])
 
   /* گرووپکردن بە پاراستنی ڕیزبەندی */
   const groups = useMemo(() => {

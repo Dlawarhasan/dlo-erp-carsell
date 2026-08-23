@@ -194,7 +194,9 @@
   /* ٢٠٢mm − (٢×٦mm پادینگ) = ١٩٠mm — هەمان پانی ناوەوەی پرینت
      (A4 ٢١٠mm − ٢×١٠mm مارجنی @page)، بۆیە پێشبینین و پرینت وەک یەک ڕەندەر دەبن. */
   width: min(202mm, 100%);
-  min-height: 285mm;
+  /* ١١mm پادینگ + ٢٦٥mm ناوەڕۆک — هەمان بەرزیی ناوەوەی پرینت،
+     بۆیە پێشبینینی سەر شاشە و ئەوەی دەردەچێت وەک یەکن */
+  min-height: 276mm;
   padding: 5.5mm 6mm;
   position: relative;
   font-family: Speda, 'Noto Naskh Arabic', 'Times New Roman', serif;
@@ -294,10 +296,18 @@
 .contract-section-title span {
   text-shadow: 0 1px 1px rgb(0 0 0 / 0.1);
 }
+.contract-party {
+  display: flex;
+  flex-direction: column;
+}
+/* هەردوو بۆکسەکە هەمان بەرزییان هەیە، بۆیە ڕیزەکان بەسەر بەرزییەکەدا
+   دابەش دەکەین تا لای فرۆشیار بۆشاییەکی ناڕێک نەمێنێتەوە */
 .contract-party-body {
   padding: 1.1mm 1.8mm 1.4mm;
   display: grid;
   gap: 0.45mm;
+  flex: 1;
+  align-content: space-evenly;
 }
 .contract-line {
   display: flex;
@@ -427,6 +437,31 @@
   background: #fffdf8;
   font-size: 7.6pt;
 }
+/* لیستی قیستەکان — کاتێک زۆرن، دەبنە دوو یان سێ ستوون تا خشتەیەکی
+   درێژ هەموو عەقدەکە بچووک نەکاتەوە */
+.contract-inst-grid {
+  display: grid;
+  gap: 0 1.6mm;
+  align-items: start;
+  background: var(--contract-paper);
+}
+.contract-inst-1 { grid-template-columns: minmax(0, 1fr); }
+.contract-inst-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.contract-inst-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.contract-inst-2,
+.contract-inst-3 { padding: 1.2mm 1.5mm; }
+.contract-inst-2 .contract-installments,
+.contract-inst-3 .contract-installments {
+  border: 1px solid var(--contract-line);
+  font-size: 7pt;
+}
+.contract-inst-2 .contract-installments th,
+.contract-inst-2 .contract-installments td { padding: 0.6mm 1mm; }
+.contract-inst-3 .contract-installments { font-size: 6.6pt; }
+.contract-inst-3 .contract-installments th,
+.contract-inst-3 .contract-installments td { padding: 0.5mm 0.7mm; }
+.contract-inst-2 .contract-installments td:last-child { min-width: 13mm; }
+.contract-inst-3 .contract-installments td:last-child { min-width: 9mm; }
 .contract-installments {
   width: 100%;
   border-collapse: collapse;
@@ -657,9 +692,50 @@
 }
 
 
-/* ── دڵنیابوونەوە لەوەی عەقدەکە لە یەک لاپەڕەدا جێدەبێتەوە ── */
+/* ── عەقدی دەرەکی — عمولەی ناوبژیوانی ── */
+.broker-fee-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 62mm;
+  align-items: stretch;
+  background: var(--contract-paper);
+}
+.broker-fee-amount {
+  display: grid;
+  align-content: center;
+  gap: 0.4mm;
+  min-height: 12mm;
+  padding: 1.2mm 2mm;
+  background: var(--contract-tint);
+  border-left: 1px solid #e7d7b8;
+}
+.broker-fee-amount span { color: #6b5a33; font-size: 7pt; }
+.broker-fee-amount strong { color: var(--contract-ink); font-size: 13pt; font-weight: 800; line-height: 1.1; }
+.broker-fee-side {
+  display: grid;
+  align-content: center;
+  gap: 0.5mm;
+  padding: 1.2mm 2.2mm;
+  font-size: 7.4pt;
+}
+.broker-fee-side b { font-family: Speda, 'Noto Kufi Arabic', sans-serif; font-size: 8pt; }
+.broker-fee-side span { color: #697789; }
+/* سێ واژوو لە جیاتی دوو */
+.broker-signatures { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3mm; }
+.broker-signatures .contract-sign-actions { grid-template-columns: minmax(0, 1fr) 13mm; gap: 1.4mm; }
+.broker-signatures .contract-fingerprint { width: 11mm; height: 11mm; }
+.broker-signatures .contract-sign-person > span { font-size: 7.6pt; }
+
+/* ── دڵنیابوونەوە لەوەی عەقدەکە یەک لاپەڕە بە تەواوی پڕ دەکاتەوە ── */
 .contract-fit { overflow: hidden; }
-.contract-fit-in { transform-origin: top center; }
+.contract-fit-in {
+  transform-origin: top center;
+  display: flex;
+  flex-direction: column;
+}
+/* هیچ بەشێک بە هەڵە بچووک نەبێتەوە */
+.contract-fit-in > * { flex: 0 0 auto; }
+/* ئەم بۆشاییە هەرچی مایەوە هەڵیدەمژێت و واژووەکان دەباتە خوارەوە */
+.contract-spacer { flex: 1 1 auto; min-height: 0; }
 
 @media print {
   .contract-paper {

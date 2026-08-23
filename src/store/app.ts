@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { getRepo, setPhotoStore, type SessionUser, type CollName, type RepoWrite } from '../lib/repo'
-import type { AppUser, AuditEntry, Car, Contract, Customer, RawAccount, Exchanger, Hawala, Partner, Settings, Tx, Role } from '../lib/types'
+import type { AppUser, AuditEntry, BrokerDeal, Car, Contract, Customer, RawAccount, Exchanger, Hawala, Partner, Settings, Tx, Role } from '../lib/types'
 import { DEFAULT_TERMS, DEFAULT_TERMS_AR } from '../lib/catalog'
 import { uid } from '../lib/format'
 import { fx } from '../lib/feedback'
@@ -48,6 +48,7 @@ interface AppState {
   cars: Car[]
   customers: Customer[]
   contracts: Contract[]
+  brokers: BrokerDeal[]
   txs: Tx[]
   debts: RawAccount[]
   partners: Partner[]
@@ -82,6 +83,7 @@ export const useApp = create<AppState>((set, get) => ({
   cars: [],
   customers: [],
   contracts: [],
+  brokers: [],
   txs: [],
   debts: [],
   partners: [],
@@ -106,6 +108,7 @@ export const useApp = create<AppState>((set, get) => ({
     bind('cars', 'cars')
     bind('customers', 'customers')
     bind('contracts', 'contracts')
+    bind('brokers', 'brokers')
     bind('txs', 'txs')
     bind('debts', 'debts')
     bind('partners', 'partners')
