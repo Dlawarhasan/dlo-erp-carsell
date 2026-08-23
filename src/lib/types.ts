@@ -254,6 +254,20 @@ export interface Settings {
   photoStore?: 'firestore' | 'storage' | 'cloudinary'
   cloudinaryName?: string
   cloudinaryPreset?: string
+  /** خەرجی مانگانەی دووبارەبووەوە — بە یەک دەستلێدان تۆمار دەکرێن */
+  expenseTemplates?: ExpenseTemplate[]
+}
+
+/** قاڵبی خەرجییەکی دووبارەبووەوە (کرێ، مووچە، ئینتەرنێت…) */
+export interface ExpenseTemplate {
+  id: string
+  title: string
+  category: string
+  amount: number
+  currency: Currency
+  account: 'cash' | 'bank'
+  /** ڕۆژی مانگ کە پێویستە بدرێت */
+  day?: number
 }
 
 /* ═══════════════ دەفتەری قەرز (قەرزی پێش سیستەم) ═══════════════ */

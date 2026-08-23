@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { NavLink, useNavigate, useLocation, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard, Car, FileText, Wallet, Users, ShieldCheck, Settings as Cog,
-  ScanLine, MoreHorizontal, LogOut, Sun, Moon, UserCog, History, CloudOff, Cloud, Handshake, NotebookPen, ArrowLeftRight, Send, X, BarChart3,
+  ScanLine, MoreHorizontal, LogOut, Sun, Moon, UserCog, History, CloudOff, Cloud, Handshake, NotebookPen, ArrowLeftRight, Send, X, BarChart3, Receipt, Search,
 } from 'lucide-react'
 import { useApp } from '../store/app'
 import { Toasts } from './ui'
 import { ShowroomMark } from './Brand'
 import { Portal } from './Portal'
+import { CommandPalette, useCommandKey } from './CommandPalette'
 import dloLogo from '../assets/dlo-it-logo.png'
 
 const NAV = [
@@ -15,6 +16,7 @@ const NAV = [
   { to: '/cars', icon: Car, label: 'ئۆتۆمبێلەکان' },
   { to: '/contracts', icon: FileText, label: 'عەقدەکان' },
   { to: '/accounting', icon: Wallet, label: 'حسابات', cap: 'money.view' as const },
+  { to: '/expenses', icon: Receipt, label: 'مەسروفات', cap: 'money.view' as const },
   { to: '/reports', icon: BarChart3, label: 'راپۆرت و کەشف حساب', cap: 'money.view' as const },
   { to: '/debts', icon: NotebookPen, label: 'دەفتەری قەرز', cap: 'money.view' as const },
   { to: '/customers', icon: Users, label: 'کریارەکان' },
@@ -32,9 +34,13 @@ const MOBILE_MAIN = ['/', '/cars', '/contracts']
 export function Layout() {
   const { user, can, signOut, toast, drop, mode, settings } = useApp()
   const [more, setMore] = useState(false)
+  const [cmd, setCmd] = useState(false)
   const nav = useNavigate()
   const loc = useLocation()
   const [theme, setTheme] = useState(() => localStorage.getItem('gm.theme') || 'light')
+
+  const openCmd = useCallback(() => setCmd(true), [])
+  useCommandKey(openCmd)
 
   const flip = () => {
     const t = theme === 'dark' ? 'light' : 'dark'
@@ -63,6 +69,16 @@ export function Layout() {
               </p>
             </div>
           </div>
+        </div>
+        <div className="px-3 pt-3">
+          <button
+            onClick={() => setCmd(true)}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-surface2 border border-line text-muted hover:text-ink hover:border-brand/40 transition text-[14px]"
+          >
+            <Search size={17} />
+            <span className="grow text-start">بگەڕێ...</span>
+            <kbd className="text-[11px] font-mono px-1.5 py-0.5 rounded-md bg-surface border border-line" dir="ltr">⌘K</kbd>
+          </button>
         </div>
         <nav className="p-3 space-y-1 overflow-y-auto grow hide-scroll">
           {items.map((n) => (
@@ -151,6 +167,13 @@ export function Layout() {
                 <X size={20} />
               </button>
             </div>
+            <button
+              onClick={() => { setMore(false); setCmd(true) }}
+              className="w-full flex items-center gap-2.5 px-3.5 py-3 mb-2.5 rounded-2xl bg-surface2 border border-line text-muted text-[14px]"
+            >
+              <Search size={18} className="text-brand" />
+              <span className="grow text-start">بگەڕێ بەدوای سەیارە، کڕیار، حساب...</span>
+            </button>
             <div className="grid grid-cols-3 gap-2.5">
               {restItems.map((n) => (
                 <NavLink
@@ -177,6 +200,7 @@ export function Layout() {
         </Portal>
       )}
 
+      <CommandPalette open={cmd} onClose={() => setCmd(false)} />
       <Toasts items={toast} onDrop={drop} />
     </div>
   )

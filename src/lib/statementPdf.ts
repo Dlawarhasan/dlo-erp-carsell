@@ -279,6 +279,29 @@ export async function downloadStatementPdf(
     g.fillStyle = balance > 0 ? C.ok : balance < 0 ? C.bad : C.soft
     tnum(g, m(Math.abs(balance)), colBal + 92 * S, mid, 'right')
     y += 32 * S
+
+    /* باڵانسی کۆتایی — بۆکسێکی ڕوون لە خوارەوەی هەموو کشف حسابێک */
+    y += 10 * S
+    const boxH = 44 * S
+    g.fillStyle = Math.abs(balance) < 0.01 ? '#f3f5f8' : balance > 0 ? '#eef8f1' : '#fdeeee'
+    g.fillRect(left, y, right - left, boxH)
+    g.strokeStyle = Math.abs(balance) < 0.01 ? C.line : balance > 0 ? C.ok : C.bad
+    g.lineWidth = 1.4 * S
+    g.strokeRect(left, y, right - left, boxH)
+
+    const bm = y + boxH / 2
+    g.fillStyle = C.ink
+    f(g, 11.5, true)
+    tr(
+      g,
+      Math.abs(balance) < 0.01 ? 'حساب پاکە' : balance > 0 ? 'ماوە لەسەر ئەم کەسە' : 'ماوە لەسەر ئێمە',
+      right - 12 * S,
+      bm,
+    )
+    g.fillStyle = Math.abs(balance) < 0.01 ? C.soft : balance > 0 ? C.ok : C.bad
+    f(g, 16, true)
+    tnum(g, m(Math.abs(balance)), left + 12 * S, bm)
+    y += boxH
   }
 
   footer(page.g)

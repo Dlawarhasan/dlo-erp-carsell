@@ -249,7 +249,12 @@ export default function Accounting() {
             )}
 
             <div className="card p-4 sm:p-5">
-              <h3 className="font-bold mb-4">خەرجییەکان بەپێی جۆر</h3>
+              <div className="flex items-center justify-between gap-2 mb-4">
+                <h3 className="font-bold">خەرجییەکان بەپێی جۆر</h3>
+                <button onClick={() => nav('/expenses')} className="text-[13px] text-brand font-medium flex items-center gap-1 shrink-0">
+                  <Receipt size={15} /> بەشی مەسروفات
+                </button>
+              </div>
               {byCategory.length === 0 ? (
                 <p className="text-sm text-muted py-3">هیچ خەرجییەک نییە لەم ماوەیەدا</p>
               ) : (

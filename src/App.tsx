@@ -16,6 +16,7 @@ const Contracts = lazy(() => import('./pages/Contracts'))
 const ContractView = lazy(() => import('./pages/ContractView'))
 const Customers = lazy(() => import('./pages/Customers'))
 const Accounting = lazy(() => import('./pages/Accounting'))
+const Expenses = lazy(() => import('./pages/Expenses'))
 const Reports = lazy(() => import('./pages/Reports'))
 const Debts = lazy(() => import('./pages/Debts'))
 const Ledger = lazy(() => import('./pages/Ledger'))
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="/contracts/:id" element={<ContractView />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/accounting" element={<Accounting />} />
+          <Route path="/expenses" element={<Expenses />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/debts" element={<Debts />} />
           <Route path="/debts/:id" element={<Ledger />} />

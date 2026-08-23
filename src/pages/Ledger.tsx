@@ -267,12 +267,22 @@ export default function Ledger() {
                     </div>
                   </div>
                 ))}
-                <div className="px-4 py-3 bg-surface2/60 flex items-center justify-between text-[13px] font-bold">
-                  <span>کۆی گشتی</span>
-                  <span className="flex gap-3">
-                    <span className="num text-ok">+{m(sum.took)}</span>
-                    <span className="num text-bad">−{m(sum.gave)}</span>
-                  </span>
+                <div className="px-4 py-3 bg-surface2/60">
+                  <div className="flex items-center justify-between text-[13px] font-bold">
+                    <span>کۆی گشتی</span>
+                    <span className="flex gap-3">
+                      <span className="num text-ok">+{m(sum.took)}</span>
+                      <span className="num text-bad">−{m(sum.gave)}</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-line">
+                    <span className="text-[13px] font-bold">
+                      {b > 0 ? 'ماوە لەسەر ئەم کەسە' : b < 0 ? 'ماوە لەسەر ئێمە' : 'باڵانس'}
+                    </span>
+                    <span className={`num text-[15px] font-bold ${b > 0 ? 'text-ok' : b < 0 ? 'text-bad' : 'text-muted'}`}>
+                      {m(Math.abs(b))}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -360,6 +370,15 @@ export default function Ledger() {
                       <td className="px-3 py-2.5 text-end num text-ok">{m(sum.took)}</td>
                       <td className="px-3 py-2.5 text-end num text-bad">{m(sum.gave)}</td>
                       <td className={`px-3 py-2.5 text-end num ${b > 0 ? 'text-ok' : b < 0 ? 'text-bad' : 'text-muted'}`}>
+                        {m(Math.abs(b))}
+                      </td>
+                      <td className="no-print" />
+                    </tr>
+                    <tr className="bg-surface2/80 font-bold">
+                      <td className="px-3 py-2.5" colSpan={4}>
+                        {b > 0 ? 'ماوە لەسەر ئەم کەسە' : b < 0 ? 'ماوە لەسەر ئێمە' : 'باڵانسی کۆتایی'}
+                      </td>
+                      <td className={`px-3 py-2.5 text-end num text-[15px] ${b > 0 ? 'text-ok' : b < 0 ? 'text-bad' : 'text-muted'}`}>
                         {m(Math.abs(b))}
                       </td>
                       <td className="no-print" />
