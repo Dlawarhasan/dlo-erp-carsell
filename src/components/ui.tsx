@@ -177,8 +177,25 @@ export function Picker({
     setQ('')
   }
 
+  /** دەقی نووسراو کە لە لیستەکەدا نییە — دەکرێت زیاد بکرێت */
+  const typed = q.trim()
+  const exact = options.some((o) => o.toLowerCase() === typed.toLowerCase())
+  const canAdd = !!allowCustom && !!typed && !exact
+
+  const addRow = canAdd && (
+    <button
+      type="button"
+      onClick={() => pick(typed)}
+      className="w-full text-start px-4 py-3 flex items-center gap-2.5 bg-brand/10 border-b border-brand/20 text-brand font-medium text-[14.5px] hover:bg-brand/15"
+    >
+      <span className="w-6 h-6 rounded-lg bg-brand text-brandInk grid place-items-center shrink-0 text-[15px] leading-none">+</span>
+      <span className="min-w-0 truncate">زیادکردنی «{typed}»</span>
+    </button>
+  )
+
   const list = (
     <>
+      {addRow}
       {filtered.map((o) => (
         <button
           key={o}
@@ -192,12 +209,11 @@ export function Picker({
           {value === o && <Check size={17} className="text-brand shrink-0" />}
         </button>
       ))}
-      {allowCustom && q && !filtered.includes(q) && (
-        <button type="button" onClick={() => pick(q)} className="w-full text-start px-4 py-3 text-[15px] text-brand hover:bg-surface2">
-          زیادکردنی «{q}»
-        </button>
+      {!filtered.length && !canAdd && (
+        <p className="px-4 py-6 text-sm text-muted text-center">
+          {allowCustom ? 'ناوەکە بنووسە تا زیادی بکەیت' : 'هیچ نەدۆزرایەوە'}
+        </p>
       )}
-      {!filtered.length && !allowCustom && <p className="px-4 py-6 text-sm text-muted text-center">هیچ نەدۆزرایەوە</p>}
     </>
   )
 
@@ -208,7 +224,16 @@ export function Picker({
         autoFocus={autoFocus}
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="بگەڕێ..."
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter') return
+          e.preventDefault()
+          /* یەکسان → هەڵیدەبژێرێت · نوێ → زیادی دەکات · ئەگەرنا یەکەم ئەنجام */
+          const hit = options.find((o) => o.toLowerCase() === typed.toLowerCase())
+          if (hit) pick(hit)
+          else if (canAdd) pick(typed)
+          else if (filtered.length) pick(filtered[0])
+        }}
+        placeholder={allowCustom ? 'بگەڕێ یان ناوێکی نوێ بنووسە...' : 'بگەڕێ...'}
         className="field ps-9"
       />
     </div>

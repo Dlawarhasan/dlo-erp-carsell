@@ -256,6 +256,11 @@ export interface Settings {
   cloudinaryPreset?: string
   /** خەرجی مانگانەی دووبارەبووەوە — بە یەک دەستلێدان تۆمار دەکرێن */
   expenseTemplates?: ExpenseTemplate[]
+  /**
+   * ئەو بەهایانەی بەکارهێنەر خۆی زیادی کردوون و لە لیستی بنەڕەتیدا نەبوون.
+   * کلیل: `brand` · `model:GMC` · `color` · `bodyType` · `fuel` …
+   */
+  customOptions?: Record<string, string[]>
 }
 
 /* ═══════════════ عەقدی دەرەکی (دەلاڵی) ═══════════════ */

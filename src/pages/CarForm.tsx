@@ -4,6 +4,7 @@ import { ScanLine, Save, Loader2, AlertTriangle, Car as CarIcon, Palette, Gauge,
 import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
 import { Field, Picker, Segmented, MoneyInput } from '../components/ui'
+import { OptionPicker } from '../components/OptionPicker'
 import { DamageMap } from '../components/DamageMap'
 import { PhotoUploader } from '../components/PhotoUploader'
 import { VinScanner } from '../components/VinScanner'
@@ -71,6 +72,22 @@ export default function CarForm() {
   const set = <K extends keyof Car>(k: K, v: Car[K]) => setC((p) => ({ ...p, [k]: v }))
 
   const models = useMemo(() => BRANDS[c.brand] || [], [c.brand])
+
+  /* ئەوانەی پێشتر بەکارهاتوون لە سەیارەکانی خۆتدا — خۆکارانە دەردەکەون */
+  const used = useMemo(() => {
+    const pull = (f: (x: Car) => string | undefined) => cars.map(f).filter(Boolean) as string[]
+    return {
+      brands: pull((x) => x.brand),
+      models: cars.filter((x) => x.brand === c.brand).map((x) => x.model).filter(Boolean),
+      colors: pull((x) => x.color),
+      bodyTypes: pull((x) => x.bodyType),
+      fuels: pull((x) => x.fuel),
+      gears: pull((x) => x.transmission),
+      cylinders: pull((x) => x.cylinders),
+      drives: pull((x) => x.drive),
+      origins: pull((x) => x.origin),
+    }
+  }, [cars, c.brand])
   const vinOk = VIN_RE.test(c.vin)
   const vinWarn = vinOk && !vinChecksumOk(c.vin)
   const guessedYear = vinOk ? vinYear(c.vin) : null
@@ -253,10 +270,13 @@ export default function CarForm() {
 
             <div className="grid sm:grid-cols-2 gap-4">
               <Field label="براند *">
-                <Picker value={c.brand} onChange={(v) => setC((p) => ({ ...p, brand: v, model: '' }))} options={BRAND_LIST} placeholder="براند هەڵبژێرە" />
+                <OptionPicker optKey="brand" base={BRAND_LIST} fromData={used.brands} value={c.brand}
+                  onChange={(v) => setC((p) => ({ ...p, brand: v, model: p.brand === v ? p.model : '' }))} placeholder="براند هەڵبژێرە یان بنووسە" />
               </Field>
               <Field label="مۆدێل *">
-                <Picker value={c.model} onChange={(v) => set('model', v)} options={models} placeholder={c.brand ? 'مۆدێل هەڵبژێرە' : 'سەرەتا براند هەڵبژێرە'} allowCustom disabled={!c.brand} />
+                <OptionPicker optKey={`model:${c.brand}`} base={models} fromData={used.models} value={c.model}
+                  onChange={(v) => set('model', v)} disabled={!c.brand}
+                  placeholder={c.brand ? 'مۆدێل هەڵبژێرە یان بنووسە' : 'سەرەتا براند هەڵبژێرە'} />
               </Field>
               <Field label="ساڵی بەرهەمهێنان">
                 <Picker value={String(c.year)} onChange={(v) => set('year', Number(v))} options={YEARS} />
@@ -272,11 +292,13 @@ export default function CarForm() {
         <Section icon={<Palette size={17} />} title="ڕەنگ و شێواز">
           <div className="grid sm:grid-cols-2 gap-4">
             <Field label="ڕەنگ *">
-              <Picker
+              <OptionPicker
+                optKey="color"
+                fromData={used.colors}
                 value={c.color}
                 onChange={(v) => set('color', v)}
-                options={COLORS.map((x) => x.ku)}
-                placeholder="ڕەنگ هەڵبژێرە"
+                base={COLORS.map((x) => x.ku)}
+                placeholder="ڕەنگ هەڵبژێرە یان بنووسە"
                 renderOption={(o) => (
                   <span className="flex items-center gap-2.5">
                     <span className="w-5 h-5 rounded-full border border-line shrink-0" style={{ background: COLORS.find((x) => x.ku === o)?.hex }} />
@@ -286,19 +308,19 @@ export default function CarForm() {
               />
             </Field>
             <Field label="جۆری ئۆتۆمبێل">
-              <Picker value={c.bodyType} onChange={(v) => set('bodyType', v)} options={BODY_TYPES} />
+              <OptionPicker optKey="bodyType" base={BODY_TYPES} fromData={used.bodyTypes} value={c.bodyType} onChange={(v) => set('bodyType', v)} />
             </Field>
             <Field label="جۆری سووتەمەنی">
-              <Picker value={c.fuel} onChange={(v) => set('fuel', v)} options={FUELS} />
+              <OptionPicker optKey="fuel" base={FUELS} fromData={used.fuels} value={c.fuel} onChange={(v) => set('fuel', v)} />
             </Field>
             <Field label="گێڕ">
-              <Picker value={c.transmission} onChange={(v) => set('transmission', v)} options={TRANSMISSIONS} />
+              <OptionPicker optKey="transmission" base={TRANSMISSIONS} fromData={used.gears} value={c.transmission} onChange={(v) => set('transmission', v)} />
             </Field>
             <Field label="ماتۆڕ / سلندەر">
-              <Picker value={c.cylinders || ''} onChange={(v) => set('cylinders', v)} options={CYLINDERS} />
+              <OptionPicker optKey="cylinders" base={CYLINDERS} fromData={used.cylinders} value={c.cylinders || ''} onChange={(v) => set('cylinders', v)} />
             </Field>
             <Field label="جۆری کش">
-              <Picker value={c.drive || ''} onChange={(v) => set('drive', v)} options={DRIVES} />
+              <OptionPicker optKey="drive" base={DRIVES} fromData={used.drives} value={c.drive || ''} onChange={(v) => set('drive', v)} />
             </Field>
           </div>
         </Section>
@@ -310,7 +332,7 @@ export default function CarForm() {
               <MoneyInput value={c.km} onChange={(n) => set('km', n)} placeholder="0" />
             </Field>
             <Field label="ڕەگەز / وارد">
-              <Picker value={c.origin || ''} onChange={(v) => set('origin', v)} options={ORIGINS} />
+              <OptionPicker optKey="origin" base={ORIGINS} fromData={used.origins} value={c.origin || ''} onChange={(v) => set('origin', v)} />
             </Field>
             <Field label="ژمارەی پلێت">
               <input dir="ltr" value={c.plate || ''} onChange={(e) => set('plate', e.target.value)} className="field text-start num" placeholder="اربیل 12345" />
