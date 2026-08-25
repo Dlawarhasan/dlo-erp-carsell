@@ -36,6 +36,10 @@ export default function Sell() {
   const [schedule, setSchedule] = useState<Installment[]>([])
   const [date, setDate] = useState(todayISO())
   const [note, setNote] = useState('')
+  const [titleWho, setTitleWho] = useState<'seller' | 'other'>('seller')
+  const [titleName, setTitleName] = useState('')
+  const [titlePhone, setTitlePhone] = useState('')
+  const [titleAddress, setTitleAddress] = useState('')
   const [w1, setW1] = useState('')
   const [w2, setW2] = useState('')
 
@@ -130,6 +134,8 @@ export default function Sell() {
   }
 
   const buyerOk = mode === 'existing' ? !!pickedId : !!(nb.name && nb.phone)
+  /* ئەگەر سەنەوی بەناوی کەسێکی ترەوە بوو، ناو و تەلەفۆن پێویستن */
+  const titleOk = titleWho === 'seller' || (titleName.trim().length > 1 && titlePhone.trim().length > 5)
   const priceOk = price > 0 && (payment === 'cash' ? cashOk : (schedule.length > 0 && Math.abs(schedule.reduce((s, i) => s + i.amount, 0) + down - price) < 1))
 
   if (!car) return <Empty title="ئۆتۆمبێلەکە نەدۆزرایەوە" />
@@ -191,6 +197,10 @@ export default function Sell() {
         cashPayments: payment === 'cash' ? cashPayments : undefined,
         terms: settings.terms,
         note,
+        titleHolder:
+          titleWho === 'seller'
+            ? { who: 'seller' as const }
+            : { who: 'other' as const, name: titleName.trim(), phone: titlePhone.trim(), address: titleAddress.trim() || undefined },
         witness1: w1,
         witness2: w2,
         status: 'active',
@@ -423,6 +433,36 @@ export default function Sell() {
               </div>
             )}
 
+            {/* ---------- خاوەنی سەنەوی ---------- */}
+            <div className="border-t border-line pt-4 space-y-3">
+              <Field label="سەنەوی ئۆتۆمبێلەکە بەناوی کێوەیە؟"
+                hint={titleWho === 'seller' ? 'زانیاری فرۆشیار پێشتر پڕکراوەتەوە — هیچی تر پێویست نییە' : undefined}>
+                <Segmented
+                  value={titleWho}
+                  onChange={setTitleWho}
+                  options={[
+                    { v: 'seller' as const, label: 'بەناوی فرۆشیارەوە' },
+                    { v: 'other' as const, label: 'کەسێکی تر' },
+                  ]}
+                />
+              </Field>
+
+              {titleWho === 'other' && (
+                <div className="grid sm:grid-cols-2 gap-4 p-3.5 rounded-xl border border-warn/30 bg-warn/[0.06] animate-in">
+                  <Field label="ناوی خاوەنی سەنەوی *">
+                    <input value={titleName} onChange={(e) => setTitleName(e.target.value)} className="field" placeholder="ناوی سیانی" />
+                  </Field>
+                  <Field label="ژمارەی تەلەفۆن *">
+                    <input value={titlePhone} onChange={(e) => setTitlePhone(e.target.value)} dir="ltr" inputMode="tel"
+                      className="field num text-start" placeholder="0750..." />
+                  </Field>
+                  <Field label="ناونیشان" hint="ئارەزوومەندانە" className="sm:col-span-2">
+                    <input value={titleAddress} onChange={(e) => setTitleAddress(e.target.value)} className="field" placeholder="ئارەزوومەندانە" />
+                  </Field>
+                </div>
+              )}
+            </div>
+
             <div className="grid sm:grid-cols-2 gap-4 border-t border-line pt-4">
               <Field label="شایەتی یەکەم">
                 <input value={w1} onChange={(e) => setW1(e.target.value)} className="field" placeholder="ناو (ئارەزوومەندانە)" />
@@ -439,7 +479,7 @@ export default function Sell() {
               <button onClick={() => setStep(0)} className="btn-ghost flex-1">
                 گەڕانەوە
               </button>
-              <button disabled={!priceOk} onClick={() => setStep(2)} className="btn-brand flex-[2]">
+              <button disabled={!priceOk || !titleOk} onClick={() => setStep(2)} className="btn-brand flex-[2]">
                 بەردەوامبە <ChevronLeft size={17} />
               </button>
             </div>
@@ -458,6 +498,7 @@ export default function Sell() {
             <Row k="شێوازی پارەدان" v={payment === 'cash' ? 'نەقد' : `قیست — پێشەکی ${money(down, currency)} + ${schedule.length} قیست`} />
             {payment === 'cash' && <Row k="وەرگیراو" v={<span className="num">{cashPayments.map((p) => money(p.amount, p.currency)).join(' + ')}</span>} />}
             {payment === 'cash' && cashPayments.length > 1 && <Row k="نرخی دراو" v={<span className="num">1 $ = {num(rate)} د.ع</span>} />}
+            <Row k="خاوەنی سەنەوی" v={titleWho === 'seller' ? 'بەناوی فرۆشیارەوە' : `${titleName} — ${titlePhone}`} />
             <Row k="بەروار" v={<span className="num">{fmtDate(date)}</span>} />
 
             <div className="flex gap-2 pt-2">

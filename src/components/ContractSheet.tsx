@@ -35,6 +35,8 @@ const T = {
     origin: 'ڕەگەز',
     condition: 'دۆخی جەستەی ئۆتۆمبێل',
     allOriginal: 'هەموو پارچەکان ئۆرجینال و سەلیمن.',
+    titleHolder: 'خاوەنی سەنەوی',
+    titleOwn: 'سەنەوی بەناوی فرۆشیارەوەیە',
     price: 'نرخی فرۆشتن',
     inWords: 'بە نووسین',
     payment: 'شێوازی پارەدان',
@@ -85,6 +87,8 @@ const T = {
     origin: 'المنشأ',
     condition: 'حالة هيكل السيارة',
     allOriginal: 'جميع القطع أصلية وسليمة.',
+    titleHolder: 'صاحب السنوية',
+    titleOwn: 'السنوية باسم البائع',
     price: 'سعر البيع',
     inWords: 'كتابةً',
     payment: 'طريقة الدفع',
@@ -350,6 +354,25 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
           {c.car.bodyNote && <p className="contract-condition-note">{c.car.bodyNote}</p>}
         </div>
       </section>
+
+      {c.titleHolder && (
+        <section className="contract-section avoid-break">
+          <SectionTitle>{t.titleHolder}</SectionTitle>
+          <div className="contract-form-grid">
+            {c.titleHolder.who === 'seller' ? (
+              <Line label={t.titleHolder} className="contract-vin">
+                {t.titleOwn}{c.seller.name ? ` — ${c.seller.name}` : ''}
+              </Line>
+            ) : (
+              <>
+                <Line label={t.name}>{c.titleHolder.name}</Line>
+                <Line label={t.phone}><span className="num">{c.titleHolder.phone}</span></Line>
+                <Line label={t.address}>{c.titleHolder.address}</Line>
+              </>
+            )}
+          </div>
+        </section>
+      )}
 
       <section className="contract-section contract-payment avoid-break">
         <SectionTitle>{t.price} {c.payment === 'installment' ? `— ${t.inst}` : ''}</SectionTitle>

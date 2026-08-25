@@ -89,6 +89,18 @@ export interface CurrencyPayment {
   amount: number
 }
 
+/**
+ * خاوەنی سەنەوی (بەڵگەنامەی تۆمار) — هەندێک جار سەیارەکە بەناوی
+ * فرۆشیارەوە نییە، بەڵکو بەناوی کەسێکی ترەوەیە. ئەمە لە عەقددا دیار دەبێت.
+ */
+export interface TitleHolder {
+  /** `seller` = بەناوی فرۆشیارەوەیە · `other` = کەسێکی تر */
+  who: 'seller' | 'other'
+  name?: string
+  phone?: string
+  address?: string
+}
+
 export interface ContractParty {
   name: string
   phone?: string
@@ -107,6 +119,8 @@ export interface Contract {
   buyerId?: string
   buyer: ContractParty
   seller: ContractParty
+  /** سەنەوی بەناوی کێوەیە — ئەگەر نەبوو، لە عەقددا هیچ پیشان نادرێت */
+  titleHolder?: TitleHolder
   price: number
   currency: Currency
   rate: number
