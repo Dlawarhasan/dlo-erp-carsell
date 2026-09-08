@@ -1,19 +1,22 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Plus, Car as CarIcon, SlidersHorizontal, Image as ImgIcon, Gauge, X } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Plus, Car as CarIcon, SlidersHorizontal, Image as ImgIcon, Gauge, X, Handshake } from 'lucide-react'
 import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
 import { SearchBar, Empty, Picker, Segmented, Sheet } from '../components/ui'
 import { BodySummary } from '../components/DamageMap'
 import { thumbOf } from '../components/Img'
 import { CAR_STATUS, COLORS, BRAND_LIST } from '../lib/catalog'
-import { fold, maskVin, money, num } from '../lib/format'
-import type { Car } from '../lib/types'
+import { fold, kmToMiles, maskVin, money, num } from '../lib/format'
+import { partnerPctOf } from '../lib/partners'
+import type { Car, Partner } from '../lib/types'
 
-export function CarCard({ car, onClick }: { car: Car; onClick: () => void }) {
+export function CarCard({ car, onClick, partner }: { car: Car; onClick: () => void; partner?: Partner }) {
   const cover = car.photos?.find((p) => p.cover) || car.photos?.[0]
   const st = CAR_STATUS[car.status]
   const hex = COLORS.find((x) => x.ku === car.color)?.hex
+  const inMiles = car.odoUnit === 'mi'
+  const odo = inMiles ? Math.round(kmToMiles(car.km)) : Math.round(car.km || 0)
   return (
     <button onClick={onClick} className="card overflow-hidden text-start hover:border-brand/50 transition group">
       <div className="aspect-[16/10] bg-surface2 relative overflow-hidden">
@@ -43,10 +46,19 @@ export function CarCard({ car, onClick }: { car: Car; onClick: () => void }) {
         </div>
         <div className="flex items-center gap-3 mt-2.5 text-[12px] text-muted">
           <span className="flex items-center gap-1">
-            <Gauge size={13} /> <span className="num">{num(car.km)}</span> کم
+            <Gauge size={13} /> <span className="num">{num(odo)}</span> {inMiles ? 'مایل' : 'کم'}
           </span>
           <span className="num truncate opacity-70" dir="ltr">{maskVin(car.vin)}</span>
         </div>
+        {car.partnerId && (
+          <div className="mt-2 flex">
+            <span className="chip bg-info/12 text-info border-info/30 !text-[11px] max-w-full">
+              <Handshake size={11} className="shrink-0" />
+              <span className="truncate">{partner?.name || (car.ownership === 'consignment' ? 'ئەمانەت' : 'شەریکی')}</span>
+              <span className="num shrink-0">{partnerPctOf(car)}٪</span>
+            </span>
+          </div>
+        )}
         <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-line">
           <span className="font-bold text-brand num">{car.askPrice ? money(car.askPrice, car.askCurrency) : '—'}</span>
           <BodySummary body={car.body} />
@@ -58,16 +70,32 @@ export function CarCard({ car, onClick }: { car: Car; onClick: () => void }) {
 
 export default function Cars() {
   const nav = useNavigate()
-  const { cars, can } = useApp()
+  const { cars, partners, can } = useApp()
+  const [params, setParams] = useSearchParams()
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<'all' | Car['status']>('all')
   const [brand, setBrand] = useState('')
   const [sort, setSort] = useState<'new' | 'price' | 'km' | 'year'>('new')
   const [filters, setFilters] = useState(false)
 
+  /* فلتەری شەریک — لە پەڕەی «شەریکەکان»ـەوە دێت: /cars?partner=<id> */
+  const partnerId = params.get('partner') || ''
+  const partner = partners.find((p) => p.id === partnerId)
+  const clearPartner = () => {
+    const next = new URLSearchParams(params)
+    next.delete('partner')
+    setParams(next, { replace: true })
+  }
+
+  /* بنەمای لیستەکە — ئەگەر شەریکێک هەڵبژێردرابێت، تەنها ئۆتۆمبێلەکانی ئەو */
+  const base = useMemo(
+    () => (partnerId ? cars.filter((c) => c.partnerId === partnerId) : cars),
+    [cars, partnerId],
+  )
+
   const list = useMemo(() => {
     const fq = fold(q)
-    let out = cars.filter((c) => {
+    let out = base.filter((c) => {
       if (status !== 'all' && c.status !== status) return false
       if (brand && c.brand !== brand) return false
       if (!fq) return true
@@ -87,23 +115,24 @@ export default function Cars() {
       return (b.createdAt || 0) - (a.createdAt || 0)
     })
     return out
-  }, [cars, q, status, brand, sort])
+  }, [base, q, status, brand, sort])
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: cars.length }
-    for (const k of Object.keys(CAR_STATUS)) c[k] = cars.filter((x) => x.status === k).length
+    const c: Record<string, number> = { all: base.length }
+    for (const k of Object.keys(CAR_STATUS)) c[k] = base.filter((x) => x.status === k).length
     return c
-  }, [cars])
+  }, [base])
 
-  const brandsInUse = useMemo(() => BRAND_LIST.filter((b) => cars.some((c) => c.brand === b)), [cars])
+  const brandsInUse = useMemo(() => BRAND_LIST.filter((b) => base.some((c) => c.brand === b)), [base])
 
   return (
     <>
       <PageHead
-        title="ئۆتۆمبێلەکان"
+        title={partner ? `ئۆتۆمبێلەکانی ${partner.name}` : 'ئۆتۆمبێلەکان'}
         sub={
           <>
-            <span className="num">{list.length}</span> لە <span className="num">{cars.length}</span>
+            <span className="num">{list.length}</span> لە <span className="num">{base.length}</span>
+            {partner ? ' — شەریکی' : ''}
           </>
         }
         action={
@@ -133,19 +162,38 @@ export default function Cars() {
           ))}
         </div>
 
-        {brand && (
-          <button onClick={() => setBrand('')} className="chip bg-brand/15 text-brand border-brand/30">
-            {brand} <X size={12} />
-          </button>
+        {(brand || partner) && (
+          <div className="flex flex-wrap gap-2">
+            {partner && (
+              <button onClick={clearPartner} className="chip bg-info/15 text-info border-info/30">
+                <Handshake size={12} /> شەریک: {partner.name} <X size={12} />
+              </button>
+            )}
+            {brand && (
+              <button onClick={() => setBrand('')} className="chip bg-brand/15 text-brand border-brand/30">
+                {brand} <X size={12} />
+              </button>
+            )}
+          </div>
         )}
 
         {list.length === 0 ? (
           <Empty
             icon={<CarIcon size={26} />}
-            title={cars.length ? 'هیچ ئۆتۆمبێلێک نەدۆزرایەوە' : 'هێشتا هیچ ئۆتۆمبێلێک تۆمار نەکراوە'}
-            sub={cars.length ? 'گەڕانەکەت یان فلتەرەکان بگۆڕە' : 'یەکەم ئۆتۆمبێل تۆمار بکە بۆ دەستپێکردن'}
+            title={
+              partner && !base.length
+                ? `هیچ ئۆتۆمبێلێک بە شەریکی ${partner.name} نییە`
+                : base.length
+                  ? 'هیچ ئۆتۆمبێلێک نەدۆزرایەوە'
+                  : 'هێشتا هیچ ئۆتۆمبێلێک تۆمار نەکراوە'
+            }
+            sub={base.length ? 'گەڕانەکەت یان فلتەرەکان بگۆڕە' : 'یەکەم ئۆتۆمبێل تۆمار بکە بۆ دەستپێکردن'}
             action={
-              can('car.edit') && !cars.length ? (
+              partner && !base.length ? (
+                <button onClick={clearPartner} className="btn-ghost">
+                  <X size={17} /> لابردنی فلتەری شەریک
+                </button>
+              ) : can('car.edit') && !cars.length ? (
                 <button onClick={() => nav('/cars/new')} className="btn-brand">
                   <Plus size={17} /> تۆمارکردنی ئۆتۆمبێل
                 </button>
@@ -155,7 +203,12 @@ export default function Cars() {
         ) : (
           <div className="grid gap-3.5 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-start">
             {list.map((c) => (
-              <CarCard key={c.id} car={c} onClick={() => nav(`/cars/${c.id}`)} />
+              <CarCard
+                key={c.id}
+                car={c}
+                partner={partners.find((p) => p.id === c.partnerId)}
+                onClick={() => nav(`/cars/${c.id}`)}
+              />
             ))}
           </div>
         )}

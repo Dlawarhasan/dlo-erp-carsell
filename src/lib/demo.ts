@@ -21,7 +21,7 @@ export function demoData() {
     {
       id: ids.c1, vin: 'JTMBFREV5HD123456', brand: 'Toyota', model: 'RAV4', trim: 'Limited', year: 2019,
       color: 'سپی مرواری', bodyType: 'بەرز', fuel: 'بەنزین', transmission: 'ئۆتۆماتیک', cylinders: '4 سلندەر',
-      drive: 'چوار کش (4WD/AWD)', origin: 'ئەمریکی', km: 78500, keys: 2, plate: 'هەولێر 21345', status: 'available',
+      drive: 'چوار کش (4WD/AWD)', origin: 'ئەمریکی', km: 78500, odoUnit: 'mi', keys: 2, plate: 'هەولێر 21345', status: 'available',
       ownership: 'owned', buyPrice: 17500, buyCurrency: 'USD', buyDate: iso(now - 40 * day), sellerName: 'کاروان عەلی',
       sellerPhone: '07501234567', askPrice: 21500, askCurrency: 'USD', photos: [],
       body: { bonnet: 'painted', doorFR: 'putty', bumperF: 'scratched' },
@@ -31,7 +31,7 @@ export function demoData() {
     {
       id: ids.c2, vin: 'WDDGF4HB1CR123789', brand: 'Mercedes-Benz', model: 'C-Class', year: 2016, color: 'ڕەش',
       bodyType: 'نزم', fuel: 'بەنزین', transmission: 'ئۆتۆماتیک', cylinders: '4 سلندەر', origin: 'ئەوروپی',
-      km: 121000, keys: 2, status: 'available', ownership: 'consignment', partnerId: ids.p1, partnerPct: 50,
+      km: 121000, keys: 2, status: 'available', ownership: 'partnership', partnerId: ids.p1, partnerPct: 50,
       buyPrice: 14000, buyCurrency: 'USD', buyDate: iso(now - 25 * day), askPrice: 17800, askCurrency: 'USD',
       photos: [], body: {}, createdAt: now - 25 * day, updatedAt: now - 25 * day,
     },
@@ -80,6 +80,9 @@ export function demoData() {
     { id: uid('tx'), date: iso(now - 90 * day), kind: 'out', amount: 8200, currency: 'USD', rate: 1320, account: 'cash', category: 'car_buy', title: 'کڕینی Kia Optima 2015', carId: ids.c4, createdAt: now - 90 * day },
     { id: uid('tx'), date: iso(now - 80 * day), kind: 'out', amount: 450, currency: 'USD', rate: 1320, account: 'cash', category: 'car_cost', title: 'بۆیاغ', carId: ids.c4, createdAt: now - 80 * day },
     { id: uid('tx'), date: iso(now - 40 * day), kind: 'out', amount: 17500, currency: 'USD', rate: 1320, account: 'cash', category: 'car_buy', title: 'کڕینی Toyota RAV4 2019', carId: ids.c1, createdAt: now - 40 * day },
+    /* شەریکی ٥٠٪ — پشکی شەریک ٧٠٠٠ بوو، بەڵام تەنها ٥٠٠٠ی داوە؛ ٢٠٠٠ی ماوە وەک قەرز لەسەری */
+    { id: uid('tx'), date: iso(now - 25 * day), kind: 'out', amount: 14000, currency: 'USD', rate: 1320, account: 'cash', category: 'car_buy', title: 'کڕینی Mercedes-Benz C-Class 2016', carId: ids.c2, createdAt: now - 25 * day },
+    { id: uid('tx'), date: iso(now - 25 * day), kind: 'in', amount: 5000, currency: 'USD', rate: 1320, account: 'cash', category: 'partner_in', title: 'پشکی شەریک لە کڕینی Mercedes-Benz C-Class — دڵشاد ئیبراهیم (نموونە)', carId: ids.c2, partnerId: ids.p1, note: '50٪ لە نرخی کڕین', createdAt: now - 25 * day + 1 },
     { id: uid('tx'), date: iso(now - 5 * day), kind: 'in', amount: 4500, currency: 'USD', rate: 1320, account: 'cash', category: 'car_sell', title: 'فرۆشتنی Kia Optima 2015', carId: ids.c4, contractId: ids.con1, createdAt: now - 5 * day },
     { id: uid('tx'), date: iso(now - 2 * day), kind: 'in', amount: 1500, currency: 'USD', rate: 1320, account: 'cash', category: 'installment', title: 'قیستی ژمارە 1', contractId: ids.con1, createdAt: now - 2 * day },
     { id: uid('tx'), date: iso(now - 12 * day), kind: 'out', amount: 900000, currency: 'IQD', rate: 1320, account: 'cash', category: 'expense', title: 'کرێی پێشانگا', createdAt: now - 12 * day },

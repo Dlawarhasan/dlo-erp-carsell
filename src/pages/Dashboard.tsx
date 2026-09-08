@@ -6,7 +6,7 @@ import { PageHead } from '../components/Layout'
 import { toAccounts, balanceOf } from '../lib/ledger'
 import { Stat } from '../components/ui'
 import { balances, carMoney, openInstallments, profitInRange } from '../lib/finance'
-import { fmtDateShort, money, num, todayISO } from '../lib/format'
+import { fmtDateShort, kmToMiles, money, num, todayISO } from '../lib/format'
 import { CAR_STATUS } from '../lib/catalog'
 import { thumbOf } from '../components/Img'
 
@@ -178,7 +178,11 @@ export default function Dashboard() {
                       <p className="text-[13px] font-medium truncate">
                         {c.brand} {c.model}
                       </p>
-                      <p className="text-[11px] text-muted"><span className="num">{c.year}</span> · <span className="num">{num(c.km)}</span> کم</p>
+                      <p className="text-[11px] text-muted">
+                        <span className="num">{c.year}</span> ·{' '}
+                        <span className="num">{num(c.odoUnit === 'mi' ? Math.round(kmToMiles(c.km)) : Math.round(c.km || 0))}</span>{' '}
+                        {c.odoUnit === 'mi' ? 'مایل' : 'کم'}
+                      </p>
                       <span className={`chip mt-1.5 !text-[10px] !py-0 ${CAR_STATUS[c.status].cls}`}>{CAR_STATUS[c.status].ku}</span>
                     </div>
                   </button>

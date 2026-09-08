@@ -11,15 +11,16 @@ import { DamageMap } from '../components/DamageMap'
 import { Img, thumbOf } from '../components/Img'
 import { Portal } from '../components/Portal'
 import { CAR_STATUS, COLORS, TX_CATEGORY_KU } from '../lib/catalog'
-import { fmtDate, maskVin, money, num, todayISO, uid } from '../lib/format'
+import { fmtDate, kmToMiles, maskVin, money, num, todayISO, uid } from '../lib/format'
 import { carMoney } from '../lib/finance'
+import { partnerCarLine } from '../lib/partners'
 import type { Currency } from '../lib/types'
 import { EXPENSE_CATEGORIES } from '../lib/catalog'
 
 export default function CarDetail() {
   const { id } = useParams()
   const nav = useNavigate()
-  const { cars, txs, contracts, settings, can, save, remove, log, say, user } = useApp()
+  const { cars, txs, contracts, partners, settings, can, save, remove, log, say, user } = useApp()
   const car = cars.find((c) => c.id === id)
   const { ask, node } = useConfirm()
   const [gallery, setGallery] = useState<number | null>(null)
@@ -32,6 +33,11 @@ export default function CarDetail() {
     [car, txs, contracts, settings.usdRate],
   )
   const costs = useMemo(() => txs.filter((t) => t.carId === id && t.category === 'car_cost').sort((a, b) => b.date.localeCompare(a.date)), [txs, id])
+  const share = useMemo(
+    () => (car?.partnerId ? partnerCarLine(car, { cars, txs, contracts, rate: settings.usdRate }) : null),
+    [car, cars, txs, contracts, settings.usdRate],
+  )
+  const partner = partners.find((p) => p.id === car?.partnerId)
   const contract = contracts.find((c) => c.carId === id && c.status !== 'cancelled')
 
   if (!car) return <Empty icon={<X size={26} />} title="ئۆتۆمبێلەکە نەدۆزرایەوە" />
@@ -80,7 +86,7 @@ export default function CarDetail() {
 
   const shareText = `${car.brand} ${car.model} ${car.year}
 ڕەنگ: ${car.color}
-کیلۆمەتر: ${num(car.km)}
+${car.odoUnit === 'mi' ? 'مایل' : 'کیلۆمەتر'}: ${num(car.odoUnit === 'mi' ? Math.round(kmToMiles(car.km)) : Math.round(car.km || 0))}
 VIN: ${car.vin}
 نرخ: ${car.askPrice ? money(car.askPrice, car.askCurrency) : 'پرسیار بکە'}
 ${settings.showroomName} ${settings.phone ? '— ' + settings.phone : ''}`
@@ -174,7 +180,19 @@ ${settings.showroomName} ${settings.phone ? '— ' + settings.phone : ''}`
           <h2 className="font-bold mb-4">زانیاری ئۆتۆمبێل</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <Spec icon={<Calendar size={15} />} label="ساڵ" value={<span className="num">{car.year}</span>} />
-            <Spec icon={<Gauge size={15} />} label="کیلۆمەتر" value={<span className="num">{num(car.km)}</span>} />
+            <Spec
+              icon={<Gauge size={15} />}
+              label={car.odoUnit === 'mi' ? 'مایل' : 'کیلۆمەتر'}
+              value={
+                <span className="flex items-baseline gap-1.5 flex-wrap">
+                  <span className="num">{num(car.odoUnit === 'mi' ? Math.round(kmToMiles(car.km)) : Math.round(car.km || 0))}</span>
+                  <span className="text-[12px] text-muted">
+                    (<span className="num">{num(car.odoUnit === 'mi' ? Math.round(car.km || 0) : Math.round(kmToMiles(car.km)))}</span>{' '}
+                    {car.odoUnit === 'mi' ? 'کم' : 'مایل'})
+                  </span>
+                </span>
+              }
+            />
             <Spec
               icon={<Palette size={15} />}
               label="ڕەنگ"
@@ -265,6 +283,58 @@ ${settings.showroomName} ${settings.phone ? '— ' + settings.phone : ''}`
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* شەریک */}
+        {share && can('money.view') && (
+          <div className="card p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-2 mb-4">
+              <h2 className="font-bold flex items-center gap-2">
+                <Handshake size={17} className="text-info" />
+                {share.capital ? 'شەریکی ئەم ئۆتۆمبێلە' : 'ئەمانەت'}
+              </h2>
+              <span className="chip bg-info/12 text-info border-info/30 num">{share.pct}٪</span>
+            </div>
+
+            <button
+              onClick={() => nav(`/cars?partner=${car.partnerId}`)}
+              className="w-full flex items-center gap-3 rounded-xl border border-line bg-surface2 px-3.5 py-2.5 text-start hover:border-brand/50 mb-3"
+            >
+              <span className="w-9 h-9 rounded-xl bg-info/15 text-info grid place-items-center font-bold shrink-0">
+                {(partner?.name || '؟').charAt(0)}
+              </span>
+              <span className="grow min-w-0">
+                <span className="block font-medium truncate">{partner?.name || 'شەریکی نەناسراو'}</span>
+                {partner?.phone && <span className="block text-[12px] text-muted num" dir="ltr">{partner.phone}</span>}
+              </span>
+            </button>
+
+            {!share.capital ? (
+              <div className="grid grid-cols-2 gap-3">
+                <MiniStat label="پشکی قازانج" value={share.profitShare === null ? '—' : money(share.profitShare, 'USD')} tone={(share.profitShare || 0) >= 0 ? 'ok' : 'bad'} />
+                <MiniStat label="سەرمایە" value="بێ سەرمایە" />
+              </div>
+            ) : share.sold ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <MiniStat label="پشکی قازانج" value={money(share.profitShare || 0, 'USD')} tone={(share.profitShare || 0) >= 0 ? 'ok' : 'bad'} />
+                <MiniStat label="سەرمایەی گەڕاوە" value={money(share.funded, 'USD')} />
+                <MiniStat label="بۆی دەدرێتەوە" value={money(share.payable, 'USD')} tone="brand" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <MiniStat label="کۆی تێچوو" value={money(share.cost, 'USD')} />
+                <MiniStat label="پشکی لە تێچوو" value={money(share.costShare, 'USD')} />
+                <MiniStat label="خۆی داویەتی" value={money(share.funded, 'USD')} tone="ok" />
+                <MiniStat label="قەرز لەسەری" value={money(share.debt, 'USD')} tone={share.debt > 0.01 ? 'warn' : 'ok'} />
+              </div>
+            )}
+
+            <p className="text-[12.5px] text-muted mt-3 leading-6">
+              {share.capital
+                ? 'پشکی شەریک بەپێی ڕێژەکەی لە کۆی تێچوو (کڕین + خەرجی) دەردەچێت. ئەوەی ئێمە بۆی داوە قەرزە لەسەری و لە کاتی فرۆشتن لە پشکەکەی کەم دەکرێتەوە.'
+                : 'ئەمانەت — هیچ سەرمایەیەکی لەسەر نەدراوە، تەنها ڕێژەیەک لە قازانج بۆی هەیە.'}
+            </p>
           </div>
         )}
 

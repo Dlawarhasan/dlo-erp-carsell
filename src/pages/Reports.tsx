@@ -3,7 +3,8 @@ import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, BarChart3, Download, FileS
 import { PageHead } from '../components/Layout'
 import { Empty, Picker, Segmented, Stat } from '../components/ui'
 import { TX_CATEGORY_KU } from '../lib/catalog'
-import { carMoney, cashBalance, exchangerBalance, profitInRange } from '../lib/finance'
+import { cashBalance, exchangerBalance, profitInRange } from '../lib/finance'
+import { partnerAccount } from '../lib/partners'
 import { convert, fmtDateShort, money, todayISO } from '../lib/format'
 import { downloadFile, toCsv } from '../lib/exportHtml'
 import { useApp } from '../store/app'
@@ -97,31 +98,50 @@ export default function Reports() {
     }
 
     if (statementKind === 'partner') {
-      const relevantCars = cars.filter((c) => c.partnerId === selectedId && c.status === 'sold')
-      const profitRows: StatementRow[] = relevantCars.flatMap((car) => {
-        const m = carMoney(car, txs, contracts, 'USD', settings.usdRate)
-        if (!m.contract || !inRange(m.contract.date)) return []
-        const shareUsd = ((m.profit || 0) * (car.partnerPct || 50)) / 100
-        return [{
-          id: `profit_${car.id}`, date: m.contract.date, title: `پشکی شەریک — ${car.brand} ${car.model}`,
-          amount: atRate(shareUsd, 'USD'), direction: 'increase' as const,
-        }]
+      const p = partners.find((x) => x.id === selectedId)
+      if (!p) return { name: pick.label, rows: [] as StatementRow[], balance: 0, balanceLabel: 'باڵانسی شەریک' }
+      const acc = partnerAccount(p, { cars, txs, contracts, rate: settings.usdRate })
+
+      /* پشکی قازانج لە ئۆتۆمبێلە فرۆشراوەکان — لەسەرمانە بۆ شەریک */
+      const profitRows: StatementRow[] = acc.lines
+        .filter((l) => l.sold && l.soldDate && inRange(l.soldDate))
+        .map((l) => ({
+          id: `profit_${l.car.id}`, date: l.soldDate as string,
+          title: `پشکی قازانج — ${l.car.brand} ${l.car.model}`,
+          note: `${l.pct}٪`,
+          amount: atRate(l.profitShare || 0, 'USD'), direction: 'increase' as const,
+        }))
+
+      /* ئەو پشکەی ئێمە بۆ شەریک داومانە و هێشتا لە کۆگایە — قەرزە لەسەری */
+      const debtRows: StatementRow[] = acc.lines
+        .filter((l) => !l.sold && l.debt > 0.01 && inRange(l.car.buyDate || ''))
+        .map((l) => ({
+          id: `debt_${l.car.id}`, date: l.car.buyDate,
+          title: `پشکی کڕین کە پێشانگا بۆی دا — ${l.car.brand} ${l.car.model}`,
+          note: `${l.pct}٪`,
+          amount: atRate(l.debt, 'USD'), direction: 'decrease' as const,
+        }))
+
+      /* پارەی وەرگیراو لە شەریک (سەرمایە/دانەوەی قەرز) و پارەی دراو بە شەریک */
+      const partnerTxs = txs.filter(
+        (t) => t.partnerId === selectedId && (t.category === 'partner' || t.category === 'partner_in' || t.category === 'hawala' || t.category === 'hawala_cancel'),
+      )
+      const txRows: StatementRow[] = partnerTxs.filter((t) => inRange(t.date)).map((t) => {
+        const net = t.category === 'hawala' || t.category === 'hawala_cancel' ? Math.max(0, t.amount - (t.fee || 0)) : t.amount
+        const up = t.category === 'partner_in' ? t.kind === 'in' : t.category === 'hawala_cancel' || t.kind === 'in'
+        return {
+          id: `tx_${t.id}`, date: t.date, title: t.title, note: t.note,
+          amount: atRate(net, t.currency, t.rate),
+          direction: (up ? 'increase' : 'decrease') as 'increase' | 'decrease',
+        }
       })
-      const allProfit = relevantCars.reduce((sum, car) => {
-        const m = carMoney(car, txs, contracts, 'USD', settings.usdRate)
-        return sum + ((m.profit || 0) * (car.partnerPct || 50)) / 100
-      }, 0)
-      const partnerTxs = txs.filter((t) => t.partnerId === selectedId && (t.category === 'partner' || t.category === 'hawala' || t.category === 'hawala_cancel'))
-      const paidValue = (t: (typeof partnerTxs)[number]) => {
-        const n = t.category === 'hawala' || t.category === 'hawala_cancel' ? Math.max(0, t.amount - (t.fee || 0)) : t.amount
-        return atRate(n, t.currency, t.rate)
+
+      return {
+        name: pick.label,
+        rows: [...profitRows, ...debtRows, ...txRows].sort((a, b) => b.date.localeCompare(a.date)),
+        balance: atRate(acc.balance, 'USD'),
+        balanceLabel: 'باڵانسی شەریک (سەرمایە + ماوە − قەرز)',
       }
-      const txRows: StatementRow[] = partnerTxs.filter((t) => inRange(t.date)).map((t) => ({
-        id: `tx_${t.id}`, date: t.date, title: t.title, note: t.note, amount: paidValue(t),
-        direction: (t.category === 'hawala_cancel' ? 'increase' : 'decrease') as 'increase' | 'decrease',
-      }))
-      const paid = partnerTxs.reduce((sum, t) => sum + (t.category === 'hawala_cancel' ? -paidValue(t) : paidValue(t)), 0)
-      return { name: pick.label, rows: [...profitRows, ...txRows].sort((a, b) => b.date.localeCompare(a.date)), balance: allProfit - paid, balanceLabel: 'باقی پشکی شەریک' }
     }
 
     if (statementKind === 'debt') {
@@ -151,7 +171,7 @@ export default function Reports() {
       direction: (t.category === 'exchange_transfer' || t.category === 'hawala_cancel' ? 'increase' : 'decrease') as 'increase' | 'decrease',
     }))
     return { name: pick.label, rows: rows.sort((a, b) => b.date.localeCompare(a.date)), balance: exchangerBalance(txs, selectedId, cur), balanceLabel: 'باڵانسی لای سەراف' }
-  }, [cars, choices, contracts, cur, debtKind, debts, from, selectedId, settings.usdRate, statementKind, to, txs])
+  }, [cars, choices, contracts, cur, debtKind, debts, from, partners, selectedId, settings.usdRate, statementKind, to, txs])
 
   const exportReport = () => {
     const rows = [
