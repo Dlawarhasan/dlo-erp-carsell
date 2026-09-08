@@ -3,6 +3,7 @@ import type { Contract, Settings } from '../lib/types'
 import { fmtDateShort, money, num, ratePer100, RATE_UNIT } from '../lib/format'
 import { amountWordsAr, amountWordsKu } from '../lib/numwords'
 import { BODY_PARTS, PART_STATES } from '../lib/catalog'
+import { PART_AR, STATE_AR, toArabic } from '../lib/arabic'
 import dloLogo from '../assets/dlo-it-logo.png'
 
 type Lang = 'ku' | 'ar'
@@ -112,17 +113,6 @@ const T = {
     footer: 'حرر هذا العقد برضا الطرفين ويعمل به من تاريخ التوقيع.',
     copy: 'نسخة المعرض / نسخة المشتري',
   },
-}
-
-const PART_AR: Record<string, string> = {
-  bumperF: 'الصدام الأمامي', bonnet: 'غطاء المحرك', fenderFR: 'الرفرف الأمامي الأيمن', fenderFL: 'الرفرف الأمامي الأيسر',
-  doorFR: 'الباب الأمامي الأيمن', doorFL: 'الباب الأمامي الأيسر', doorRR: 'الباب الخلفي الأيمن', doorRL: 'الباب الخلفي الأيسر',
-  quarterRR: 'الرفرف الخلفي الأيمن', quarterRL: 'الرفرف الخلفي الأيسر', roof: 'السقف', trunk: 'غطاء الصندوق',
-  bumperR: 'الصدام الخلفي', pillarR: 'العمود الأيمن', pillarL: 'العمود الأيسر', chassis: 'الشاسي',
-  glassF: 'الزجاج الأمامي', glassR: 'الزجاج الخلفي',
-}
-const STATE_AR: Record<string, string> = {
-  original: 'أصلي', painted: 'مصبوغ', putty: 'معجون', replaced: 'مستبدل', dented: 'مضروب', scratched: 'خدش',
 }
 
 export function AutoMark() {
@@ -260,6 +250,17 @@ export function Party({ title, rows }: { title: string; rows: { label: string; v
 
 export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings; lang?: Lang }) {
   const t = T[lang]
+  /**
+   * `v()` نرخەکان (نەک ناونیشانەکان) وەردەگێڕێت بۆ عەرەبی.
+   * ناوی کەسەکان و ژمارەکان هەرگیز پێیدا تێناپەڕن — وەک خۆیان دەمێننەوە.
+   */
+  const v = (x?: string | number | null) => (lang === 'ar' ? toArabic(x) : String(x ?? ''))
+  /**
+   * ناوی لایەنەکان هەرگیز وەرناگێڕدرێت — تەنها ئەگەر ناوی **پێشانگا** خۆی بێت،
+   * ئەوا ئەو ناوە عەرەبییە بەکاردێت کە خاوەنەکەی لە ڕێکخستندا نووسیویەتی.
+   */
+  const partyName = (n?: string) =>
+    lang === 'ar' && n && s.showroomNameAr && n.trim() === (s.showroomName || '').trim() ? s.showroomNameAr : n
   const issues = BODY_PARTS.filter((p) => (c.car.body || {})[p.key])
   const rest = c.price - (c.down || 0)
   const cashPayments = (c.cashPayments || []).filter((p) => p.amount > 0)
@@ -278,7 +279,7 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
   /* پێشانگا خۆی یەکێکە لە لایەنەکان — ناونیشانەکەی لە خوارەوە دێت،
      بۆیە لە بۆکسی ئەو لایەنەدا دووبارەی ناکەینەوە */
   const shopSide: 'seller' | 'buyer' = c.type === 'purchase' ? 'buyer' : 'seller'
-  const shopAddress = [s.city, s.address].filter(Boolean).join(' — ')
+  const shopAddress = [v(s.city), s.address].filter(Boolean).join(' — ')
 
   const { inner, k, h, avail, gap } = useOnePage(`${c.id}|${lang}|${terms.length}|${c.installments.length}`)
   const shrink = k < 1
@@ -310,16 +311,16 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
 
       <div className="contract-parties avoid-break">
         <Party title={t.seller} rows={[
-          { label: t.name, value: c.seller.name },
+          { label: t.name, value: partyName(c.seller.name) },
           { label: t.phone, value: <span className="num">{c.seller.phone}</span> },
-          ...(shopSide === 'seller' ? [] : [{ label: t.address, value: c.seller.address }]),
+          ...(shopSide === 'seller' ? [] : [{ label: t.address, value: v(c.seller.address) }]),
         ]} />
         <Party title={t.buyer} rows={[
-          { label: t.name, value: c.buyer.name },
+          { label: t.name, value: partyName(c.buyer.name) },
           { label: t.phone, value: <span className="num">{c.buyer.phone}</span> },
           { label: t.idNo, value: <span className="num">{c.buyer.idNumber}</span> },
-          { label: t.issuer, value: c.buyer.idIssuer },
-          ...(shopSide === 'buyer' ? [] : [{ label: t.address, value: c.buyer.address }]),
+          { label: t.issuer, value: v(c.buyer.idIssuer) },
+          ...(shopSide === 'buyer' ? [] : [{ label: t.address, value: v(c.buyer.address) }]),
         ]} />
       </div>
 
@@ -329,14 +330,14 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
           <Line label={t.brand}>{c.car.brand}</Line>
           <Line label={t.model}>{c.car.model}</Line>
           <Line label={t.year}><span className="num">{c.car.year}</span></Line>
-          <Line label={t.color}>{c.car.color}</Line>
+          <Line label={t.color}>{v(c.car.color)}</Line>
           <Line label={t.km}><span className="num">{num(c.car.km || 0)}</span></Line>
           <Line label={t.plate}><span className="num">{c.car.plate || '—'}</span></Line>
-          <Line label={t.body}>{c.car.bodyType || '—'}</Line>
-          <Line label={t.fuel}>{c.car.fuel || '—'}</Line>
-          <Line label={t.gear}>{c.car.transmission || '—'}</Line>
-          <Line label={t.engine}>{c.car.cylinders || '—'}</Line>
-          <Line label={t.origin}>{c.car.origin || '—'}</Line>
+          <Line label={t.body}>{v(c.car.bodyType) || '—'}</Line>
+          <Line label={t.fuel}>{v(c.car.fuel) || '—'}</Line>
+          <Line label={t.gear}>{v(c.car.transmission) || '—'}</Line>
+          <Line label={t.engine}>{v(c.car.cylinders) || '—'}</Line>
+          <Line label={t.origin}>{v(c.car.origin) || '—'}</Line>
           <Line label={t.keys}><span className="num">{c.car.keys || '—'}</span></Line>
           <Line label={t.vin} className="contract-vin"><span className="num">{c.car.vin}</span></Line>
         </div>
@@ -361,13 +362,13 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
           <div className="contract-form-grid">
             {c.titleHolder.who === 'seller' ? (
               <Line label={t.titleHolder} className="contract-vin">
-                {t.titleOwn}{c.seller.name ? ` — ${c.seller.name}` : ''}
+                {t.titleOwn}{c.seller.name ? ` — ${partyName(c.seller.name)}` : ''}
               </Line>
             ) : (
               <>
                 <Line label={t.name}>{c.titleHolder.name}</Line>
                 <Line label={t.phone}><span className="num">{c.titleHolder.phone}</span></Line>
-                <Line label={t.address}>{c.titleHolder.address}</Line>
+                <Line label={t.address}>{v(c.titleHolder.address)}</Line>
               </>
             )}
           </div>
@@ -434,8 +435,8 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
 
       <section className="contract-signatures avoid-break">
         {[
-          { role: t.seller, name: c.seller.name },
-          { role: t.buyer, name: c.buyer.name },
+          { role: t.seller, name: partyName(c.seller.name) },
+          { role: t.buyer, name: partyName(c.buyer.name) },
         ].map((party) => (
           <div className="contract-sign" key={party.role}>
             <div className="contract-sign-person">
@@ -472,7 +473,7 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
         <a href="https://www.instagram.com/dlo_.it/" target="_blank" rel="noreferrer" className="contract-promo-link">
           <img src={dloLogo} alt="DLO.IT" className="contract-dlo-logo" />
           <b className="num">07700581716</b>
-          <span>بۆ دروستکردنی ئەپلیکەیشن و سیستەمی داتابەیس پەیوەندیم پێوە بکە.</span>
+          <span>{lang === 'ku' ? 'بۆ دروستکردنی ئەپلیکەیشن و سیستەمی داتابەیس پەیوەندیم پێوە بکە.' : 'لتصميم التطبيقات وأنظمة قواعد البيانات تواصل معي.'}</span>
         </a>
       </footer>
       </div>

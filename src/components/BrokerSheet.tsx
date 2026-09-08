@@ -11,6 +11,7 @@ import type { BrokerDeal, Settings } from '../lib/types'
 import { fmtDateShort, money, num } from '../lib/format'
 import { amountWordsAr, amountWordsKu } from '../lib/numwords'
 import { AutoMark, Line, Party, SectionTitle, useOnePage } from './ContractSheet'
+import { toArabic } from '../lib/arabic'
 import dloLogo from '../assets/dlo-it-logo.png'
 
 type Lang = 'ku' | 'ar'
@@ -56,11 +57,13 @@ const T = {
 
 export function BrokerSheet({ d, s, lang = 'ku' }: { d: BrokerDeal; s: Settings; lang?: Lang }) {
   const t = T[lang]
+  /* نرخەکان (ڕەنگ، جۆر، شار…) بۆ عەرەبی — ناو و ژمارەکان وەک خۆیان */
+  const v = (x?: string | number | null) => (lang === 'ar' ? toArabic(x) : String(x ?? ''))
   const words = lang === 'ku' ? amountWordsKu(d.price, d.currency) : amountWordsAr(d.price, d.currency)
   const showroom = lang === 'ku' ? s.showroomName : s.showroomNameAr || s.showroomName
   const terms = d.terms?.length ? d.terms : lang === 'ku' ? s.terms : s.termsAr || []
 
-  const shopAddress = [s.city, s.address].filter(Boolean).join(' — ')
+  const shopAddress = [v(s.city), s.address].filter(Boolean).join(' — ')
 
   const { inner, k, h, avail, gap } = useOnePage(`${d.id}|${lang}|${terms.length}`)
   const shrink = k < 1
@@ -93,13 +96,13 @@ export function BrokerSheet({ d, s, lang = 'ku' }: { d: BrokerDeal; s: Settings;
             { label: t.name, value: d.seller.name },
             { label: t.phone, value: <span className="num">{d.seller.phone}</span> },
             { label: t.idNo, value: <span className="num">{d.seller.idNumber}</span> },
-            { label: t.address, value: d.seller.address },
+            { label: t.address, value: v(d.seller.address) },
           ]} />
           <Party title={t.buyer} rows={[
             { label: t.name, value: d.buyer.name },
             { label: t.phone, value: <span className="num">{d.buyer.phone}</span> },
             { label: t.idNo, value: <span className="num">{d.buyer.idNumber}</span> },
-            { label: t.address, value: d.buyer.address },
+            { label: t.address, value: v(d.buyer.address) },
           ]} />
         </div>
 
@@ -109,12 +112,12 @@ export function BrokerSheet({ d, s, lang = 'ku' }: { d: BrokerDeal; s: Settings;
             <Line label={t.brand}>{d.car.brand || '—'}</Line>
             <Line label={t.model}>{d.car.model || '—'}</Line>
             <Line label={t.year}><span className="num">{d.car.year || '—'}</span></Line>
-            <Line label={t.color}>{d.car.color || '—'}</Line>
+            <Line label={t.color}>{v(d.car.color) || '—'}</Line>
             <Line label={t.km}><span className="num">{d.car.km ? num(d.car.km) : '—'}</span></Line>
             <Line label={t.plate}><span className="num">{d.car.plate || '—'}</span></Line>
-            <Line label={t.body}>{d.car.bodyType || '—'}</Line>
-            <Line label={t.fuel}>{d.car.fuel || '—'}</Line>
-            <Line label={t.gear}>{d.car.transmission || '—'}</Line>
+            <Line label={t.body}>{v(d.car.bodyType) || '—'}</Line>
+            <Line label={t.fuel}>{v(d.car.fuel) || '—'}</Line>
+            <Line label={t.gear}>{v(d.car.transmission) || '—'}</Line>
             <Line label={t.vin} className="contract-vin"><span className="num">{d.car.vin || '—'}</span></Line>
           </div>
         </section>
@@ -194,7 +197,7 @@ export function BrokerSheet({ d, s, lang = 'ku' }: { d: BrokerDeal; s: Settings;
           <a href="https://www.instagram.com/dlo_.it/" target="_blank" rel="noreferrer" className="contract-promo-link">
             <img src={dloLogo} alt="DLO.IT" className="contract-dlo-logo" />
             <b className="num">07700581716</b>
-            <span>بۆ دروستکردنی ئەپلیکەیشن و سیستەمی داتابەیس پەیوەندیم پێوە بکە.</span>
+            <span>{lang === 'ku' ? 'بۆ دروستکردنی ئەپلیکەیشن و سیستەمی داتابەیس پەیوەندیم پێوە بکە.' : 'لتصميم التطبيقات وأنظمة قواعد البيانات تواصل معي.'}</span>
           </a>
         </footer>
       </div>

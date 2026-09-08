@@ -1,7 +1,8 @@
 import type { Contract, Settings } from './types'
-import { fmtDateShort, money, num } from './format'
+import { fmtDateShort, money, num, ratePer100, RATE_UNIT } from './format'
 import { amountWordsAr, amountWordsKu } from './numwords'
 import { BODY_PARTS, PART_STATES } from './catalog'
+import { PART_AR, STATE_AR, toArabic } from './arabic'
 import dloLogo from '../assets/dlo-it-logo.png?inline'
 
 type Lang = 'ku' | 'ar'
@@ -43,15 +44,6 @@ const L = {
     footer: 'حرر هذا العقد برضا الطرفين ويعمل به من تاريخ التوقيع.',
   },
 }
-
-const PART_AR: Record<string, string> = {
-  bumperF: 'الصدام الأمامي', bonnet: 'غطاء المحرك', fenderFR: 'الرفرف الأمامي الأيمن', fenderFL: 'الرفرف الأمامي الأيسر',
-  doorFR: 'الباب الأمامي الأيمن', doorFL: 'الباب الأمامي الأيسر', doorRR: 'الباب الخلفي الأيمن', doorRL: 'الباب الخلفي الأيسر',
-  quarterRR: 'الرفرف الخلفي الأيمن', quarterRL: 'الرفرف الخلفي الأيسر', roof: 'السقف', trunk: 'غطاء الصندوق',
-  bumperR: 'الصدام الخلفي', pillarR: 'العمود الأيمن', pillarL: 'العمود الأيسر', chassis: 'الشاسي',
-  glassF: 'الزجاج الأمامي', glassR: 'الزجاج الخلفي',
-}
-const STATE_AR: Record<string, string> = { original: 'أصلي', painted: 'مصبوغ', putty: 'معجون', replaced: 'مستبدل', dented: 'مضروب', scratched: 'خدش' }
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;700&family=Noto+Naskh+Arabic:wght@400;700&display=swap');
@@ -106,10 +98,16 @@ function sheet(c: Contract, s: Settings, lang: Lang) {
   const rest = c.price - (c.down || 0)
   const cashPayments = (c.cashPayments || []).filter((p) => p.amount > 0)
   const cashPaymentText = cashPayments.length
-    ? `${esc(t.cash)} · ${esc(t.received)}: <span class="num">${cashPayments.map((p) => money(p.amount, p.currency)).join(' + ')}</span>${cashPayments.length > 1 ? ` · ${esc(t.rate)}: <span class="num">1 $ = ${money(c.rate, 'IQD')}</span>` : ''}`
+    ? `${esc(t.cash)} · ${esc(t.received)}: <span class="num">${cashPayments.map((p) => money(p.amount, p.currency)).join(' + ')}</span>${cashPayments.length > 1 ? ` · ${esc(t.rate)}: <span class="num">${RATE_UNIT} $ = ${money(ratePer100(c.rate), 'IQD')}</span>` : ''}`
     : esc(t.cash)
   const words = lang === 'ku' ? amountWordsKu(c.price, c.currency) : amountWordsAr(c.price, c.currency)
   const terms = lang === 'ku' ? (c.terms?.length ? c.terms : s.terms) : s.termsAr || []
+
+  /* نرخەکان بۆ عەرەبی — ناو، تەلەفۆن و ژمارەکان وەک خۆیان دەمێننەوە */
+  const av = (x?: string | number | null) => (lang === 'ar' ? toArabic(x) : String(x ?? ''))
+  /* ناوی کەسەکان وەک خۆیان — تەنها ناوی پێشانگا نوسخە عەرەبییەکەی وەردەگرێت */
+  const partyName = (n?: string) =>
+    lang === 'ar' && n && s.showroomNameAr && n.trim() === (s.showroomName || '').trim() ? s.showroomNameAr : n
 
   const row = (k: string, v: unknown) => `<div class="row"><span class="k">${esc(k)}:</span><span class="v">${esc(v || '')}</span></div>`
   const cell = (k: string, v: unknown) => `<td class="k">${esc(k)}</td><td class="v">${v ?? ''}</td>`
@@ -121,7 +119,7 @@ function sheet(c: Contract, s: Settings, lang: Lang) {
       ${s.logo ? `<img src="${esc(s.logo)}" style="width:62px;height:62px;object-fit:contain">` : ''}
       <div>
         <h1>${esc(lang === 'ku' ? s.showroomName : s.showroomNameAr || s.showroomName)}</h1>
-        <p>${esc([s.city, s.address].filter(Boolean).join(' — '))}${s.phone ? ' · ' + esc(s.phone) : ''}${s.phone2 ? ' · ' + esc(s.phone2) : ''}</p>
+        <p>${esc([av(s.city), s.address].filter(Boolean).join(' — '))}${s.phone ? ' · ' + esc(s.phone) : ''}${s.phone2 ? ' · ' + esc(s.phone2) : ''}</p>
       </div>
     </div>
     <div class="meta">
@@ -134,10 +132,10 @@ function sheet(c: Contract, s: Settings, lang: Lang) {
 
   <div class="grid2">
     <div class="box"><div class="bt">${esc(t.seller)}</div><div class="bb">
-      ${row(t.name, c.seller.name)}${row(t.phone, c.seller.phone)}${row(t.address, c.seller.address)}
+      ${row(t.name, partyName(c.seller.name))}${row(t.phone, c.seller.phone)}${row(t.address, av(c.seller.address))}
     </div></div>
     <div class="box"><div class="bt">${esc(t.buyer)}</div><div class="bb">
-      ${row(t.name, c.buyer.name)}${row(t.phone, c.buyer.phone)}${row(t.idNo, c.buyer.idNumber)}${row(t.issuer, c.buyer.idIssuer)}${row(t.address, c.buyer.address)}
+      ${row(t.name, partyName(c.buyer.name))}${row(t.phone, c.buyer.phone)}${row(t.idNo, c.buyer.idNumber)}${row(t.issuer, av(c.buyer.idIssuer))}${row(t.address, av(c.buyer.address))}
     </div></div>
   </div>
 
@@ -145,9 +143,9 @@ function sheet(c: Contract, s: Settings, lang: Lang) {
     <div class="hd2">${esc(t.carInfo)}</div>
     <table style="border-top:0">
       <tr>${cell(t.brand, esc(c.car.brand))}${cell(t.model, esc(c.car.model))}${cell(t.year, `<span class="num">${esc(c.car.year)}</span>`)}</tr>
-      <tr>${cell(t.color, esc(c.car.color))}${cell(t.km, `<span class="num">${num(c.car.km || 0)}</span>`)}${cell(t.plate, `<span class="num">${esc(c.car.plate || '—')}</span>`)}</tr>
-      <tr>${cell(t.body, esc(c.car.bodyType || '—'))}${cell(t.fuel, esc(c.car.fuel || '—'))}${cell(t.gear, esc(c.car.transmission || '—'))}</tr>
-      <tr>${cell(t.engine, esc(c.car.cylinders || '—'))}${cell(t.origin, esc(c.car.origin || '—'))}${cell(t.keys, `<span class="num">${esc(c.car.keys || '—')}</span>`)}</tr>
+      <tr>${cell(t.color, esc(av(c.car.color)))}${cell(t.km, `<span class="num">${num(c.car.km || 0)}</span>`)}${cell(t.plate, `<span class="num">${esc(c.car.plate || '—')}</span>`)}</tr>
+      <tr>${cell(t.body, esc(av(c.car.bodyType) || '—'))}${cell(t.fuel, esc(av(c.car.fuel) || '—'))}${cell(t.gear, esc(av(c.car.transmission) || '—'))}</tr>
+      <tr>${cell(t.engine, esc(av(c.car.cylinders) || '—'))}${cell(t.origin, esc(av(c.car.origin) || '—'))}${cell(t.keys, `<span class="num">${esc(c.car.keys || '—')}</span>`)}</tr>
       <tr><td class="k">${esc(t.vin)}</td><td colspan="5" class="vin">${esc(c.car.vin)}</td></tr>
     </table>
   </div>
@@ -209,8 +207,8 @@ function sheet(c: Contract, s: Settings, lang: Lang) {
 
   <div class="signs">
     ${[
-      { r: t.seller, n: c.seller.name },
-      { r: t.buyer, n: c.buyer.name },
+      { r: t.seller, n: partyName(c.seller.name) },
+      { r: t.buyer, n: partyName(c.buyer.name) },
     ]
       .map(
         (p) => `<div class="sign">
@@ -238,17 +236,18 @@ function sheet(c: Contract, s: Settings, lang: Lang) {
       : ''
   }
 
-  <p class="dlo-ad"><a href="https://www.instagram.com/dlo_.it/" target="_blank" rel="noreferrer"><img src="${dloLogo}" alt="DLO.IT"><span class="num">07700581716</span><span>بۆ دروستکردنی ئەپلیکەیشن و سیستەمی داتابەیس پەیوەندیم پێوە بکە.</span></a></p>
+  <p class="dlo-ad"><a href="https://www.instagram.com/dlo_.it/" target="_blank" rel="noreferrer"><img src="${dloLogo}" alt="DLO.IT"><span class="num">07700581716</span><span>${lang === 'ku' ? 'بۆ دروستکردنی ئەپلیکەیشن و سیستەمی داتابەیس پەیوەندیم پێوە بکە.' : 'لتصميم التطبيقات وأنظمة قواعد البيانات تواصل معي.'}</span></a></p>
 </div>`
 }
 
 export function contractsHtmlDoc(list: Contract[], s: Settings, lang: Lang = 'ku', title = 'عەقدەکان') {
+  const showroom = lang === 'ku' ? s.showroomName : s.showroomNameAr || s.showroomName
   return `<!doctype html>
 <html lang="${lang === 'ku' ? 'ckb' : 'ar'}" dir="rtl">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)} — ${esc(s.showroomName)}</title><style>${CSS}</style></head>
+<title>${esc(title)} — ${esc(showroom)}</title><style>${CSS}</style></head>
 <body>
-<div class="bar noprint"><span>${esc(title)} — <b class="num">${list.length}</b> ${lang === 'ku' ? 'عەقد' : 'عقد'} · ${esc(s.showroomName)}</span><button onclick="window.print()">${lang === 'ku' ? 'پرینت / PDF' : 'طباعة / PDF'}</button></div>
+<div class="bar noprint"><span>${esc(title)} — <b class="num">${list.length}</b> ${lang === 'ku' ? 'عەقد' : 'عقد'} · ${esc(showroom)}</span><button onclick="window.print()">${lang === 'ku' ? 'پرینت / PDF' : 'طباعة / PDF'}</button></div>
 ${list.map((c) => sheet(c, s, lang)).join('\n')}
 </body></html>`
 }
