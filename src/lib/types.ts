@@ -148,6 +148,12 @@ export interface Contract {
   createdAt: number
   createdBy?: string
   createdByName?: string
+  /** چەند جار دەستکاری کراوە */
+  edits?: number
+  /** کاتی کۆتا دەستکاری */
+  editedAt?: number
+  editedBy?: string
+  editedByName?: string
 }
 
 export type TxCategory =
