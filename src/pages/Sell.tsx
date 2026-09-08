@@ -5,7 +5,7 @@ import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
 import { Field, MoneyInput, Picker, Segmented, Empty } from '../components/ui'
 import { CITIES } from '../lib/catalog'
-import { addMonths, convert, fmtDate, kmToMiles, money, num, todayISO, uid } from '../lib/format'
+import { addMonths, convert, fmtDate, fmtRate, kmToMiles, money, num, todayISO, uid } from '../lib/format'
 import { amountWordsKu } from '../lib/numwords'
 import { fx } from '../lib/feedback'
 import type { Contract, Currency, CurrencyPayment, Customer, Installment } from '../lib/types'
@@ -359,7 +359,7 @@ export default function Sell() {
               <div className="space-y-3 border-t border-line pt-4">
                 <div className="rounded-xl border border-brand/30 bg-brand/8 px-3 py-2.5 text-[13px] leading-6 text-ink">
                   <b>پارەدانی دوو دراو:</b> بڕی یەک دراو بنووسە؛ بڕی دراوی دووەم خۆکارانە بە نرخی ڕۆژی تۆمارکراو حساب دەکرێت.
-                  <span className="block text-muted">١ $ = <span className="num">{num(rate)}</span> د.ع</span>
+                  <span className="block text-muted num">{fmtRate(rate)}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="بڕی وەرگیراو بە دۆلار">
@@ -500,7 +500,7 @@ export default function Sell() {
             <Row k="نرخ" v={<span className="num font-bold text-brand">{money(price, currency)}</span>} />
             <Row k="شێوازی پارەدان" v={payment === 'cash' ? 'نەقد' : `قیست — پێشەکی ${money(down, currency)} + ${schedule.length} قیست`} />
             {payment === 'cash' && <Row k="وەرگیراو" v={<span className="num">{cashPayments.map((p) => money(p.amount, p.currency)).join(' + ')}</span>} />}
-            {payment === 'cash' && cashPayments.length > 1 && <Row k="نرخی دراو" v={<span className="num">1 $ = {num(rate)} د.ع</span>} />}
+            {payment === 'cash' && cashPayments.length > 1 && <Row k="نرخی دراو" v={<span className="num">{fmtRate(rate)}</span>} />}
             <Row k="خاوەنی سەنەوی" v={titleWho === 'seller' ? 'بەناوی فرۆشیارەوە' : `${titleName} — ${titlePhone}`} />
             <Row k="بەروار" v={<span className="num">{fmtDate(date)}</span>} />
 

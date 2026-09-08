@@ -6,7 +6,8 @@ import {
 } from 'lucide-react'
 import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
-import { Sheet, Field, MoneyInput, Segmented, useConfirm, Empty, Picker } from '../components/ui'
+import { EditInfo, Sheet, Field, MoneyInput, Segmented, useConfirm, Empty, Picker } from '../components/ui'
+import { withEdit } from '../lib/edits'
 import { DamageMap } from '../components/DamageMap'
 import { Img, thumbOf } from '../components/Img'
 import { Portal } from '../components/Portal'
@@ -14,7 +15,7 @@ import { CAR_STATUS, COLORS, TX_CATEGORY_KU } from '../lib/catalog'
 import { fmtDate, kmToMiles, maskVin, money, num, todayISO, uid } from '../lib/format'
 import { carMoney } from '../lib/finance'
 import { partnerCarLine } from '../lib/partners'
-import type { Currency } from '../lib/types'
+import type { Currency, Tx } from '../lib/types'
 import { EXPENSE_CATEGORIES } from '../lib/catalog'
 
 export default function CarDetail() {
@@ -25,7 +26,10 @@ export default function CarDetail() {
   const { ask, node } = useConfirm()
   const [gallery, setGallery] = useState<number | null>(null)
   const [costOpen, setCostOpen] = useState(false)
-  const [cost, setCost] = useState({ label: '', amount: 0, currency: 'USD' as Currency, date: todayISO() })
+  /* `id` پڕ بێت واتە دەستکاری تێچوویەکی تۆمارکراوە */
+  const [cost, setCost] = useState<{ id?: string; label: string; amount: number; currency: Currency; date: string; tx?: Tx }>({
+    label: '', amount: 0, currency: 'USD', date: todayISO(),
+  })
   const [copied, setCopied] = useState(false)
 
   const m = useMemo(
@@ -62,25 +66,35 @@ export default function CarDetail() {
     if (await remove('txs', t.id, t.title)) say('تێچووەکە سڕایەوە')
   }
 
+  const resetCost = () => setCost({ label: '', amount: 0, currency: 'USD', date: todayISO() })
+
+  const editCost = (t: Tx) => {
+    setCost({ id: t.id, label: t.title, amount: t.amount, currency: t.currency, date: t.date, tx: t })
+    setCostOpen(true)
+  }
+
   const addCost = async () => {
     if (!cost.amount || !cost.label) return
-    await save('txs', {
-      id: uid('tx'),
+    const prev = cost.tx
+    const base: Tx = {
+      ...(prev || {}),
+      id: cost.id || uid('tx'),
       date: cost.date,
       kind: 'out',
       amount: cost.amount,
       currency: cost.currency,
-      rate: settings.usdRate,
-      account: 'cash',
+      rate: prev?.rate || settings.usdRate,
+      account: prev?.account || 'cash',
       category: 'car_cost',
       title: cost.label,
       carId: car.id,
-      createdAt: Date.now(),
-      createdBy: user?.uid,
-    })
-    await log('زیادکردنی تێچوو', 'cars', car.id, `${cost.label} — ${money(cost.amount, cost.currency)}`)
-    say('تێچووەکە زیادکرا')
-    setCost({ label: '', amount: 0, currency: 'USD', date: todayISO() })
+      createdAt: prev?.createdAt || Date.now(),
+      createdBy: prev?.createdBy || user?.uid,
+    }
+    await save('txs', prev ? withEdit(base, user) : base)
+    await log(prev ? 'گۆڕینی تێچوو' : 'زیادکردنی تێچوو', 'cars', car.id, `${cost.label} — ${money(cost.amount, cost.currency)}`)
+    say(prev ? 'تێچووەکە نوێ کرایەوە' : 'تێچووەکە زیادکرا')
+    resetCost()
     setCostOpen(false)
   }
 
@@ -269,9 +283,15 @@ ${settings.showroomName} ${settings.phone ? '— ' + settings.phone : ''}`
                       <div className="min-w-0">
                         <p className="text-sm truncate">{t.title}</p>
                         <p className="text-xs text-muted num">{fmtDate(t.date)}</p>
+                        <EditInfo edits={t.edits} at={t.editedAt} by={t.editedByName} />
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="num text-sm font-medium text-bad">{money(t.amount, t.currency)}</span>
+                        {can('money.edit') && (
+                          <button onClick={() => editCost(t)} className="text-muted hover:text-ink p-1" aria-label="گۆڕینی تێچوو">
+                            <Pencil size={14} />
+                          </button>
+                        )}
                         {can('contract.delete') && (
                           <button onClick={() => delCost(t)} className="text-muted hover:text-bad p-1" aria-label="سڕینەوەی تێچوو">
                             <Trash2 size={14} />
@@ -390,20 +410,30 @@ ${settings.showroomName} ${settings.phone ? '— ' + settings.phone : ''}`
       {/* زیادکردنی تێچوو */}
       <Sheet
         open={costOpen}
-        onClose={() => setCostOpen(false)}
-        title="زیادکردنی تێچوو"
+        onClose={() => {
+          setCostOpen(false)
+          resetCost()
+        }}
+        title={cost.id ? 'گۆڕینی تێچوو' : 'زیادکردنی تێچوو'}
         footer={
           <>
-            <button className="btn-ghost" onClick={() => setCostOpen(false)}>
+            <button
+              className="btn-ghost"
+              onClick={() => {
+                setCostOpen(false)
+                resetCost()
+              }}
+            >
               پاشگەزبوونەوە
             </button>
             <button className="btn-brand" onClick={addCost} disabled={!cost.amount || !cost.label}>
-              <Wallet size={16} /> زیادکردن
+              <Wallet size={16} /> {cost.id ? 'نوێکردنەوە' : 'زیادکردن'}
             </button>
           </>
         }
       >
         <div className="space-y-4">
+          {cost.tx && <EditInfo edits={cost.tx.edits} at={cost.tx.editedAt} by={cost.tx.editedByName} />}
           <Field label="جۆری تێچوو">
             <Picker
               value={cost.label}

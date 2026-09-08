@@ -15,7 +15,8 @@ import {
 } from 'lucide-react'
 import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
-import { Empty, Field, MoneyInput, Picker, Segmented, Sheet, useConfirm } from '../components/ui'
+import { EditInfo, Empty, Field, MoneyInput, Picker, Segmented, Sheet, useConfirm } from '../components/ui'
+import { withEdit } from '../lib/edits'
 import { accountBalance } from '../lib/finance'
 import { EXPENSE_CATEGORIES } from '../lib/catalog'
 import { convert, fmtDateShort, money, num, todayISO, uid } from '../lib/format'
@@ -170,31 +171,39 @@ export default function Expenses() {
 
   const record = async (data: {
     date: string; title: string; amount: number; currency: Currency; account: 'cash' | 'bank'; note?: string
+    /** ئەگەر دەستکاری خەرجییەکی تۆمارکراو بێت */
+    prev?: Tx
   }) => {
     if (!data.amount || !data.title) {
       say('بڕ و ناونیشان پێویستە', 'bad')
       return false
     }
     const tolerance = data.currency === 'USD' ? 0.011 : 1
-    if (data.amount > accountBalance(txs, data.account, data.currency) + tolerance) {
+    /* لە دەستکاریدا تەنها ئەو گۆڕانکارییە ڕێگری لێدەکرێت کە باڵانس نەرێنی و خراپتر بکات */
+    const others = data.prev ? txs.filter((t) => t.id !== data.prev!.id) : txs
+    const now = accountBalance(txs, data.account, data.currency)
+    const next = accountBalance(others, data.account, data.currency) - data.amount
+    if (next < -tolerance && next < now) {
       say(`باڵانسی ${data.account === 'cash' ? 'سندوق' : 'بانک'} بەس نییە`, 'bad')
       return false
     }
-    await save('txs', {
-      id: uid('tx'),
+    const base: Tx = {
+      ...(data.prev || {}),
+      id: data.prev?.id || uid('tx'),
       date: data.date,
       kind: 'out' as const,
       amount: data.amount,
       currency: data.currency,
-      rate,
+      rate: data.prev?.rate || rate,
       account: data.account,
       category: 'expense' as TxCategory,
       title: data.title,
       note: data.note,
-      createdAt: Date.now(),
-      createdBy: user?.uid,
-    })
-    await log('تۆمارکردنی خەرجی', 'txs', undefined, `${data.title} — ${money(data.amount, data.currency)}`)
+      createdAt: data.prev?.createdAt || Date.now(),
+      createdBy: data.prev?.createdBy || user?.uid,
+    }
+    await save('txs', data.prev ? withEdit(base, user) : base)
+    await log(data.prev ? 'گۆڕینی خەرجی' : 'تۆمارکردنی خەرجی', 'txs', base.id, `${data.title} — ${money(data.amount, data.currency)}`)
     fx('money')
     return true
   }
@@ -203,6 +212,7 @@ export default function Expenses() {
     if (saving) return
     setSaving(true)
     try {
+      const prev = f.id ? txs.find((t) => t.id === f.id) : undefined
       const ok = await record({
         date: f.date || todayISO(),
         title: f.title || '',
@@ -210,11 +220,12 @@ export default function Expenses() {
         currency: f.currency as Currency,
         account: f.account as 'cash' | 'bank',
         note: f.note,
+        prev,
       })
       if (!ok) return
-      say('خەرجی تۆمارکرا')
+      say(prev ? 'خەرجییەکە نوێ کرایەوە' : 'خەرجی تۆمارکرا')
       /* بەرواری تۆمارکراو دەمێنێتەوە بۆ خێراکردنی تۆمارێکی تر */
-      setF({ ...f, amount: 0, note: '' })
+      setF({ date: f.date, amount: 0, currency: f.currency, account: f.account, title: f.title, note: '' })
       setOpen(false)
     } catch {
       say('نەتوانرا تۆمار بکرێت', 'bad')
@@ -487,10 +498,20 @@ export default function Expenses() {
                             {t.note ? ` · ${t.note}` : ''}
                             {t.createdBy && userName[t.createdBy] ? ` · ${userName[t.createdBy]}` : ''}
                           </p>
+                          <EditInfo edits={t.edits} at={t.editedAt} by={t.editedByName} />
                         </div>
                         <span className="font-bold text-bad num shrink-0">{money(t.amount, t.currency)}</span>
                         {editable && (
-                          <button onClick={() => delTx(t)} className="p-1.5 -me-1.5 text-muted hover:text-bad shrink-0">
+                          <button
+                            onClick={() => { setF({ ...t }); setOpen(true) }}
+                            className="p-1.5 text-muted hover:text-ink shrink-0"
+                            aria-label="گۆڕینی خەرجی"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                        )}
+                        {editable && (
+                          <button onClick={() => delTx(t)} className="p-1.5 -me-1.5 text-muted hover:text-bad shrink-0" aria-label="سڕینەوەی خەرجی">
                             <Trash2 size={16} />
                           </button>
                         )}
@@ -513,18 +534,19 @@ export default function Expenses() {
       {/* ═══ زیادکردنی خەرجی ═══ */}
       <Sheet
         open={open}
-        onClose={() => setOpen(false)}
-        title="خەرجی نوێ"
+        onClose={() => { setOpen(false); setF((p) => ({ ...p, id: undefined })) }}
+        title={f.id ? 'گۆڕینی خەرجی' : 'خەرجی نوێ'}
         footer={
           <>
-            <button onClick={() => setOpen(false)} className="btn-quiet">پاشگەزبوونەوە</button>
+            <button onClick={() => { setOpen(false); setF((p) => ({ ...p, id: undefined })) }} className="btn-quiet">پاشگەزبوونەوە</button>
             <button onClick={addExpense} disabled={saving} className="btn-brand">
-              {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} تۆمارکردن
+              {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} {f.id ? 'نوێکردنەوە' : 'تۆمارکردن'}
             </button>
           </>
         }
       >
         <div className="space-y-4">
+          {f.id && <EditInfo edits={f.edits} at={f.editedAt} by={f.editedByName} />}
           {/* جۆرەکان وەک دوگمە — خێراترین ڕێگە */}
           <Field label="جۆری خەرجی">
             <div className="flex flex-wrap gap-1.5">

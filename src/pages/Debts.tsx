@@ -7,9 +7,9 @@ import {
 import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
 import { Field, Picker, Segmented, SearchBar, Empty, Sheet, Stat, useConfirm } from '../components/ui'
-import { fmtDateShort, fold, money, todayISO, uid } from '../lib/format'
+import { fmtDateShort, fmtRate, fold, money, todayISO, uid } from '../lib/format'
 import {
-  toAccounts, balanceOf, isEmpty, lastMove, blankAccount, nowTime,
+  toAccounts, balanceOf, isEmpty, lastMove, blankAccount, netIn, nowTime,
   type Account,
 } from '../lib/ledger'
 import type { Currency } from '../lib/types'
@@ -21,44 +21,65 @@ export default function Debts() {
 
   const [q, setQ] = useState('')
   const [tab, setTab] = useState<'all' | 'owe' | 'owed' | 'clear'>('all')
-  const [cur, setCur] = useState<Currency>('USD')
+  /* `ALL` = دۆلار و دینار پێکەوە، بە نرخی ڕۆژ */
+  const [cur, setCur] = useState<Currency | 'ALL'>('ALL')
+  /* دراوی کۆی گشتی لە دۆخی «هەردوو» */
+  const [allCur, setAllCur] = useState<Currency>('IQD')
   const [edit, setEdit] = useState<Account | null>(null)
 
   const editable = can('money.edit')
+  const rate = settings.usdRate
   const accounts = useMemo(() => toAccounts(debts), [debts])
+  /* دراوی کۆی گشتی کاتێک هەردووکیان پێکەوە پیشان دەدرێن */
+  const totalCur: Currency = cur === 'ALL' ? allCur : cur
+  /** باڵانسی کۆی یەک کەس بە یەک دراو */
+  const netOf = (a: Account) => netIn(a, totalCur, rate)
 
   const list = useMemo(() => {
     const needle = fold(q)
     return accounts
       .map((a) => ({ a, b: balanceOf(a) }))
-      .filter(({ b }) =>
-        tab === 'all' ? true : tab === 'owe' ? b.USD + b.IQD > 0 : tab === 'owed' ? b.USD + b.IQD < 0 : isEmpty(b),
-      )
+      .filter(({ a, b }) => {
+        if (tab === 'all') return true
+        if (tab === 'clear') return isEmpty(b)
+        const n = netOf(a)
+        return tab === 'owe' ? n > 0 : n < 0
+      })
       .filter(({ a }) => (!needle ? true : fold(`${a.name} ${a.phone || ''} ${a.note || ''}`).includes(needle)))
       .sort((x, y) => {
-        const ax = Math.abs(x.b.USD) + Math.abs(x.b.IQD)
-        const ay = Math.abs(y.b.USD) + Math.abs(y.b.IQD)
+        const ax = Math.abs(netOf(x.a))
+        const ay = Math.abs(netOf(y.a))
         if (ax !== ay) return ay - ax
         return x.a.name.localeCompare(y.a.name)
       })
-  }, [accounts, q, tab])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accounts, q, tab, totalCur, rate])
 
-  /* کۆی گشتی — هەر دراوێک بە جیا، وەک صەراف */
+  /*
+   * کۆی گشتی — هەر دراوێک بە جیا (وەک صەراف)، لەگەڵ کۆیەکی هاوبەش
+   * کە دۆلارەکە بە نرخی ڕۆژ دەگۆڕێت تا هەردووکیان یەک ژمارە بدەن.
+   */
   const totals = useMemo(() => {
-    const t = { oweUSD: 0, oweIQD: 0, owedUSD: 0, owedIQD: 0 }
+    const t = { oweUSD: 0, oweIQD: 0, owedUSD: 0, owedIQD: 0, oweAll: 0, owedAll: 0, people: 0 }
     for (const a of accounts) {
       const b = balanceOf(a)
       if (b.USD > 0) t.oweUSD += b.USD
       else t.owedUSD += -b.USD
       if (b.IQD > 0) t.oweIQD += b.IQD
       else t.owedIQD += -b.IQD
+      const n = netIn(a, totalCur, rate)
+      if (Math.abs(n) < 0.01) continue
+      t.people++
+      if (n > 0) t.oweAll += n
+      else t.owedAll += -n
     }
     return t
-  }, [accounts])
+  }, [accounts, totalCur, rate])
 
-  const owe = cur === 'USD' ? totals.oweUSD : totals.oweIQD
-  const owed = cur === 'USD' ? totals.owedUSD : totals.owedIQD
-  const m = (n: number) => money(n, cur)
+  const all = cur === 'ALL'
+  const owe = all ? totals.oweAll : cur === 'USD' ? totals.oweUSD : totals.oweIQD
+  const owed = all ? totals.owedAll : cur === 'USD' ? totals.owedUSD : totals.owedIQD
+  const m = (n: number) => money(n, totalCur)
 
   return (
     <>
@@ -81,32 +102,69 @@ export default function Debts() {
           <Stat
             label="خەڵک قەرزارمە"
             value={<span className="num">{m(owe)}</span>}
-            sub={`${accounts.filter((a) => balanceOf(a).USD + balanceOf(a).IQD > 0).length} کەس`}
+            sub={
+              all ? (
+                <>
+                  <span className="num">{money(totals.oweUSD, 'USD')}</span> ·{' '}
+                  <span className="num">{money(totals.oweIQD, 'IQD')}</span>
+                </>
+              ) : (
+                `${accounts.filter((a) => netOf(a) > 0).length} کەس`
+              )
+            }
             tone="ok"
             icon={<ArrowDownLeft size={17} />}
           />
           <Stat
             label="من قەرزارم"
             value={<span className="num">{m(owed)}</span>}
-            sub={`${accounts.filter((a) => balanceOf(a).USD + balanceOf(a).IQD < 0).length} کەس`}
+            sub={
+              all ? (
+                <>
+                  <span className="num">{money(totals.owedUSD, 'USD')}</span> ·{' '}
+                  <span className="num">{money(totals.owedIQD, 'IQD')}</span>
+                </>
+              ) : (
+                `${accounts.filter((a) => netOf(a) < 0).length} کەس`
+              )
+            }
             tone="bad"
             icon={<ArrowUpRight size={17} />}
           />
         </div>
 
-        <div className="card p-3.5 flex items-center justify-between gap-3">
+        <div className="card p-3.5 flex items-center justify-between gap-3 flex-wrap">
           <div className="min-w-0">
             <p className="text-[13px] text-muted">جیاوازی</p>
             <p className={`text-lg font-bold num ${owe - owed >= 0 ? 'text-ok' : 'text-bad'}`}>{m(owe - owed)}</p>
+            {all && (
+              <p className="text-[11px] text-muted mt-0.5">
+                هەردوو دراو پێکەوە بە نرخی <span className="num">{fmtRate(rate)}</span>
+              </p>
+            )}
           </div>
-          <div className="w-32 shrink-0">
+          {all && (
+            <div className="w-40 shrink-0">
+              <Segmented
+                size="sm"
+                value={allCur}
+                onChange={setAllCur}
+                options={[
+                  { v: 'IQD' as Currency, label: 'کۆ بە دینار' },
+                  { v: 'USD' as Currency, label: 'کۆ بە دۆلار' },
+                ]}
+              />
+            </div>
+          )}
+          <div className="w-48 shrink-0">
             <Segmented
               size="sm"
               value={cur}
               onChange={setCur}
               options={[
-                { v: 'USD' as Currency, label: '$' },
-                { v: 'IQD' as Currency, label: 'د.ع' },
+                { v: 'ALL' as const, label: 'هەردوو' },
+                { v: 'USD' as const, label: '$' },
+                { v: 'IQD' as const, label: 'د.ع' },
               ]}
             />
           </div>
@@ -150,7 +208,10 @@ export default function Debts() {
             {list.map(({ a, b }) => {
               const last = lastMove(a)
               const zero = isEmpty(b)
-              const pos = b.USD + b.IQD > 0
+              const n = netOf(a)
+              const pos = n > 0
+              /* هەردوو دراوی هەیە → کۆیەکی هاوبەشیشی پیشان دەدەین */
+              const mixed = Math.abs(b.USD) >= 0.01 && Math.abs(b.IQD) >= 0.01
               return (
                 <button
                   key={a.id}
@@ -196,6 +257,11 @@ export default function Debts() {
                         {Math.abs(b.IQD) >= 0.01 && (
                           <span className={`block font-bold num text-[13px] ${b.IQD > 0 ? 'text-ok' : 'text-bad'}`}>
                             {money(Math.abs(b.IQD), 'IQD')}
+                          </span>
+                        )}
+                        {mixed && (
+                          <span className={`block text-[11px] num ${pos ? 'text-ok' : 'text-bad'}`}>
+                            کۆ: {money(Math.abs(n), totalCur)}
                           </span>
                         )}
                       </>

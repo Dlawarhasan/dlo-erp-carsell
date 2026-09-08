@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { Contract, Settings } from '../lib/types'
-import { fmtDateShort, money, num } from '../lib/format'
+import { fmtDateShort, money, num, ratePer100, RATE_UNIT } from '../lib/format'
 import { amountWordsAr, amountWordsKu } from '../lib/numwords'
 import { BODY_PARTS, PART_STATES } from '../lib/catalog'
 import dloLogo from '../assets/dlo-it-logo.png'
@@ -387,7 +387,7 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
               <>
                 <span>{t.cash}</span>
                 {cashPayments.length > 0 && <span>{t.received}: <b className="num">{cashPayments.map((p) => money(p.amount, p.currency)).join(' + ')}</b></span>}
-                {cashPayments.length > 1 && <span>{t.rate}: <b className="num">1 $ = {money(c.rate, 'IQD')}</b></span>}
+                {cashPayments.length > 1 && <span>{t.rate}: <b className="num">{RATE_UNIT} $ = {money(ratePer100(c.rate), 'IQD')}</b></span>}
               </>
             ) : (
               <>

@@ -197,6 +197,12 @@ export interface Tx {
   note?: string
   createdAt: number
   createdBy?: string
+  /** چەند جار دەستکاری کراوە */
+  edits?: number
+  /** کاتی کۆتا دەستکاری */
+  editedAt?: number
+  editedBy?: string
+  editedByName?: string
 }
 
 export interface Partner {
@@ -418,6 +424,12 @@ export interface LedgerEntry {
   at: number
   by?: string
   byName?: string
+  /** چەند جار دەستکاری کراوە */
+  edits?: number
+  /** کاتی کۆتا دەستکاری */
+  editedAt?: number
+  editedBy?: string
+  editedByName?: string
 }
 
 export interface Account {

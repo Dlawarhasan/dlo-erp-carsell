@@ -7,7 +7,7 @@
  */
 
 import { A4, canvasToJpeg, jpegPagesToPdf, savePdf } from './pdf'
-import { fmtDateShort, money, todayISO } from './format'
+import { fmtDateShort, fmtRate, money, todayISO } from './format'
 import type { Currency } from './types'
 import type { Account, Row } from './ledger'
 
@@ -84,10 +84,23 @@ const clip = (g: Ctx2, s: string, max: number) => {
   return out + '…'
 }
 
+export interface StatementSum {
+  took: number
+  gave: number
+}
+
 export interface StatementMeta {
   showroom: string
   phone?: string
   address?: string
+  /** نرخی ١ دۆلار بە دینار — بۆ کۆی گشتی لە دۆخی «هەردوو» */
+  rate?: number
+  /** دراوی کۆی گشتی لە دۆخی «هەردوو» */
+  totalCur?: Currency
+  /** باڵانسی هەر دراوێک بە جیا */
+  balances?: { USD: number; IQD: number }
+  /** کۆی هاتوو و ڕۆیشتوو بۆ هەر دراوێک */
+  sums?: { USD: StatementSum; IQD: StatementSum }
 }
 
 /**
@@ -97,12 +110,16 @@ export interface StatementMeta {
 export async function downloadStatementPdf(
   acc: Account,
   rows: Row[],
-  cur: Currency,
-  totals: { took: number; gave: number },
+  /** `ALL` = دۆلار و دینار پێکەوە لە یەک کشف حساب */
+  cur: Currency | 'ALL',
+  totals: StatementSum,
   balance: number,
   meta: StatementMeta,
 ) {
-  const m = (n: number) => money(n, cur)
+  const both = cur === 'ALL'
+  const totalCur: Currency = both ? meta.totalCur || 'IQD' : (cur as Currency)
+  /** بڕ بە دراوی خۆی — لە دۆخی هەردوو، هەر ڕیزێک بە دراوی خۆی دەنووسرێت */
+  const m = (n: number, c?: Currency) => money(n, c || totalCur)
   const pages: { jpeg: Uint8Array; w: number; h: number }[] = []
 
   /* پانی ستوونەکان — لە ڕاستەوە بۆ چەپ */
@@ -245,40 +262,52 @@ export async function downloadStatementPdf(
     f(g, 9.5)
     tr(g, clip(g, r.note || '—', colNote - colIn - 8 * S), colNote, mid)
 
+    const rc: Currency = both ? r.currency : (cur as Currency)
     f(g, 10, true)
     if (r.kind === 'take') {
       g.fillStyle = C.ok
-      tnum(g, m(r.amount), colIn, mid, 'right')
+      tnum(g, m(r.amount, rc), colIn, mid, 'right')
     } else {
       g.fillStyle = C.bad
-      tnum(g, m(r.amount), colOut, mid, 'right')
+      tnum(g, m(r.amount, rc), colOut, mid, 'right')
     }
 
     g.fillStyle = r.running > 0 ? C.ok : r.running < 0 ? C.bad : C.soft
     f(g, 10, true)
-    tnum(g, m(Math.abs(r.running)), colBal + 92 * S, mid, 'right')
+    tnum(g, m(Math.abs(r.running), rc), colBal + 92 * S, mid, 'right')
 
     y += rowH
     line(g, left, y, right)
   }
 
-  /* کۆی گشتی */
+  /* کۆی گشتی — لە دۆخی هەردوو، هەر دراوێک ڕیزی خۆی هەیە */
   {
     const g = page.g
     y += 6 * S
-    g.fillStyle = C.band
-    g.fillRect(left, y, right - left, 32 * S)
-    const mid = y + 16 * S
-    g.fillStyle = C.ink
-    f(g, 10.5, true)
-    tr(g, 'کۆی گشتی', colDate, mid)
-    g.fillStyle = C.ok
-    tnum(g, m(totals.took), colIn, mid, 'right')
-    g.fillStyle = C.bad
-    tnum(g, m(totals.gave), colOut, mid, 'right')
-    g.fillStyle = balance > 0 ? C.ok : balance < 0 ? C.bad : C.soft
-    tnum(g, m(Math.abs(balance)), colBal + 92 * S, mid, 'right')
-    y += 32 * S
+
+    const band = (label: string, took: number, gave: number, bal: number, c: Currency) => {
+      g.fillStyle = C.band
+      g.fillRect(left, y, right - left, 32 * S)
+      const mid = y + 16 * S
+      g.fillStyle = C.ink
+      f(g, 10.5, true)
+      tr(g, label, colDate, mid)
+      g.fillStyle = C.ok
+      tnum(g, m(took, c), colIn, mid, 'right')
+      g.fillStyle = C.bad
+      tnum(g, m(gave, c), colOut, mid, 'right')
+      g.fillStyle = bal > 0 ? C.ok : bal < 0 ? C.bad : C.soft
+      tnum(g, m(Math.abs(bal), c), colBal + 92 * S, mid, 'right')
+      y += 32 * S
+    }
+
+    if (both && meta.sums && meta.balances) {
+      band('کۆی دۆلار', meta.sums.USD.took, meta.sums.USD.gave, meta.balances.USD, 'USD')
+      y += 4 * S
+      band('کۆی دینار', meta.sums.IQD.took, meta.sums.IQD.gave, meta.balances.IQD, 'IQD')
+    } else {
+      band('کۆی گشتی', totals.took, totals.gave, balance, totalCur)
+    }
 
     /* باڵانسی کۆتایی — بۆکسێکی ڕوون لە خوارەوەی هەموو کشف حسابێک */
     y += 10 * S
@@ -300,8 +329,17 @@ export async function downloadStatementPdf(
     )
     g.fillStyle = Math.abs(balance) < 0.01 ? C.soft : balance > 0 ? C.ok : C.bad
     f(g, 16, true)
-    tnum(g, m(Math.abs(balance)), left + 12 * S, bm)
+    tnum(g, m(Math.abs(balance), totalCur), left + 12 * S, bm)
     y += boxH
+
+    /* لە دۆخی هەردوو، ڕوون دەکەینەوە بە چ نرخێک کۆکراونەتەوە */
+    if (both && meta.rate) {
+      y += 14 * S
+      g.fillStyle = C.soft
+      f(g, 9)
+      tr(g, `دۆلار و دینار پێکەوە کۆکراونەتەوە بە نرخی ${fmtRate(meta.rate)}`, right, y)
+      y += 8 * S
+    }
   }
 
   footer(page.g)

@@ -163,6 +163,22 @@ export function statement(a: Account, cur?: Currency): Row[] {
   })
 }
 
+/**
+ * کۆی گشتی بە یەک دراو — دۆلار بە نرخی ڕۆژ دەگۆڕدرێت بۆ دینار (یان بە پێچەوانە)
+ * تا هەردوو دراوەکە پێکەوە یەک ژمارە بدەن.
+ */
+export function combinedNet(a: Account, cur: Currency, rate: number) {
+  return netIn(a, cur, rate)
+}
+
+/** کۆی هاتوو و ڕۆیشتوو بۆ هەردوو دراو پێکەوە */
+export function sumsAll(a: Account, from?: string, to?: string) {
+  return {
+    USD: totals(a, 'USD', from, to),
+    IQD: totals(a, 'IQD', from, to),
+  }
+}
+
 /** کام دراوەکان لەم حسابەدا بەکارهاتوون */
 export function currenciesUsed(a: Account): Currency[] {
   const s = new Set<Currency>()

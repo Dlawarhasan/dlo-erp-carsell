@@ -51,6 +51,20 @@ export function sumIn(list: { amount: number; currency: Currency; rate?: number 
   return list.reduce((s, x) => s + convert(x.amount, x.currency, to, x.rate || fallbackRate), 0)
 }
 
+/* ================= نرخی دراو ================= */
+/**
+ * نرخی دۆلار لە هەموو شوێنێک بە **١٠٠ دۆلار بەرامبەر دینار** پیشان دەدرێت و
+ * دەنووسرێت (وەک بازاڕ)، بەڵام لە ناوەوە هەمیشە نرخی **١** دۆلار خەزن دەکرێت
+ * تا هەموو ژمێریارییەکانی پێشوو هەروەک خۆیان بمێننەوە.
+ */
+export const RATE_UNIT = 100
+/** نرخی ناوەکی (١ دۆلار) → نرخی پیشاندان (١٠٠ دۆلار) */
+export const ratePer100 = (rate1: number) => Math.round((rate1 || 0) * RATE_UNIT)
+/** نرخی نووسراو (١٠٠ دۆلار) → نرخی ناوەکی (١ دۆلار) */
+export const rateFrom100 = (r100: number) => (r100 || 0) / RATE_UNIT
+/** نووسینی نرخ بۆ بەکارهێنەر — «١٠٠ $ = ١٣٢٬٠٠٠ د.ع» */
+export const fmtRate = (rate1: number) => `${RATE_UNIT} $ = ${num(ratePer100(rate1))} د.ع`
+
 /* ================= ژمێرەری ڕێگا ================= */
 export const KM_PER_MILE = 1.609344
 /** کیلۆمەتر → مایل */

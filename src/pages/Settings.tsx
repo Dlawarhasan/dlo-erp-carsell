@@ -10,7 +10,7 @@ import { getRepo, COLLECTIONS } from '../lib/repo'
 import { downloadFile } from '../lib/exportHtml'
 import { CITIES, DEFAULT_TERMS, DEFAULT_TERMS_AR } from '../lib/catalog'
 import { demoData } from '../lib/demo'
-import { fmtBytes, num, todayISO } from '../lib/format'
+import { fmtBytes, fmtRate, rateFrom100, ratePer100, todayISO } from '../lib/format'
 import type { Settings } from '../lib/types'
 
 function Card({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
@@ -306,8 +306,8 @@ export default function SettingsPage() {
         {/* پارە */}
         <Card icon={<Percent size={17} />} title="دراو و عەقد">
           <div className="grid sm:grid-cols-3 gap-4">
-            <Field label="نرخی دۆلار (د.ع)" hint={`1$ = ${num(s.usdRate)} د.ع`}>
-              <MoneyInput value={s.usdRate} onChange={(n) => set('usdRate', n)} />
+            <Field label="نرخی دۆلار — ١٠٠ دۆلار بەرامبەر دینار" hint={fmtRate(s.usdRate)}>
+              <MoneyInput value={ratePer100(s.usdRate)} onChange={(n) => set('usdRate', rateFrom100(n))} />
             </Field>
             <Field label="پێشگری عەقد" hint="نموونە: 2026">
               <input value={s.contractPrefix} onChange={(e) => set('contractPrefix', e.target.value)} className="field num text-start" disabled={!editable} />

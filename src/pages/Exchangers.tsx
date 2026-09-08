@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
-import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, History, Loader2, Pencil, Plus, Trash2, Wallet } from 'lucide-react'
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Check, History, Loader2, Pencil, Plus, Trash2, Wallet } from 'lucide-react'
 import { PageHead } from '../components/Layout'
-import { Empty, Field, MoneyInput, Segmented, Sheet, Stat, useConfirm } from '../components/ui'
+import { EditInfo, Empty, Field, MoneyInput, Segmented, Sheet, Stat, useConfirm } from '../components/ui'
+import { withEdit } from '../lib/edits'
 import { cashBalance, exchangerBalance, exchangersTotal } from '../lib/finance'
 import { fmtDateShort, money, todayISO, uid } from '../lib/format'
 import { useApp } from '../store/app'
@@ -16,6 +17,8 @@ type Movement = {
   currency: Currency
   date: string
   note: string
+  /** ئەگەر دەستکاری جوڵەیەکی تۆمارکراو بێت */
+  tx?: Tx
 }
 
 export default function ExchangersPage() {
@@ -63,41 +66,74 @@ export default function ExchangersPage() {
   const saveMovement = async () => {
     if (!movement || savingMovement) return
     if (movement.amount <= 0) return say('بڕی پارە پێویستە', 'bad')
+    const editing = movement.tx
     const tolerance = movement.currency === 'USD' ? 0.011 : 1
-    const current = exchangerBalance(txs, movement.exchanger.id, movement.currency)
-    const showroomCash = cashBalance(txs, movement.currency)
-    if (movement.flow === 'transfer' && movement.amount > showroomCash + tolerance) {
+    const transferFlow = movement.flow === 'transfer'
+    /* لە کاتی دەستکاریدا، جوڵەی کۆن لە باڵانسەکان لادەبرێت و ئەوەی نوێ دادەنرێت */
+    const others = editing ? txs.filter((t) => t.id !== editing.id) : txs
+    const cashNow = cashBalance(txs, movement.currency)
+    const exchNow = exchangerBalance(txs, movement.exchanger.id, movement.currency)
+    const cashNext = cashBalance(others, movement.currency) + (transferFlow ? -movement.amount : movement.amount)
+    const exchNext = exchangerBalance(others, movement.exchanger.id, movement.currency) + (transferFlow ? movement.amount : -movement.amount)
+    /* تەنها ئەو گۆڕانکارییە ڕێگری لێدەکرێت کە باڵانسەکە نەرێنی و خراپتر بکات */
+    if (cashNext < -tolerance && cashNext < cashNow) {
       return say('باڵانسی سندوقی پێشانگا بەس نییە', 'bad')
     }
-    if (movement.flow === 'return' && movement.amount > current + tolerance) {
+    if (exchNext < -tolerance && exchNext < exchNow) {
       return say('بڕەکە لە باڵانسی ئەم سەرافە زیاترە', 'bad')
     }
     setSavingMovement(true)
     try {
       const transfer = movement.flow === 'transfer'
-      const tx: Tx = {
-        id: uid('tx'),
+      const base: Tx = {
+        id: editing?.id || uid('tx'),
         date: movement.date,
         kind: transfer ? 'out' : 'in',
         amount: movement.amount,
         currency: movement.currency,
-        rate: settings.usdRate,
+        rate: editing?.rate || settings.usdRate,
         account: 'cash',
         category: transfer ? 'exchange_transfer' : 'exchange_return',
         title: `${transfer ? 'گواستنەوە بۆ' : 'وەرگرتنەوە لە'} سەراف — ${movement.exchanger.name}`,
         exchangerId: movement.exchanger.id,
         note: movement.note || undefined,
-        createdAt: Date.now(),
-        createdBy: user?.uid,
+        createdAt: editing?.createdAt || Date.now(),
+        createdBy: editing?.createdBy || user?.uid,
+        edits: editing?.edits,
+        editedAt: editing?.editedAt,
+        editedBy: editing?.editedBy,
+        editedByName: editing?.editedByName,
       }
-      await save('txs', tx)
-      await log(transfer ? 'گواستنەوە بۆ سەراف' : 'وەرگرتنەوە لە سەراف', 'exchangers', movement.exchanger.id, `${movement.exchanger.name} — ${money(movement.amount, movement.currency)}`)
-      say(transfer ? 'گواستنەوەکە تۆمارکرا' : 'وەرگرتنەوەکە تۆمارکرا')
+      await save('txs', editing ? withEdit(base, user) : base)
+      await log(
+        editing ? 'دەستکاری جوڵەی سەراف' : transfer ? 'گواستنەوە بۆ سەراف' : 'وەرگرتنەوە لە سەراف',
+        'exchangers',
+        movement.exchanger.id,
+        `${movement.exchanger.name} — ${money(movement.amount, movement.currency)}`,
+      )
+      say(editing ? 'جوڵەکە نوێ کرایەوە' : transfer ? 'گواستنەوەکە تۆمارکرا' : 'وەرگرتنەوەکە تۆمارکرا')
       setMovement(null)
     } catch {
       say('نەتوانرا جوڵەی پارە تۆمار بکرێت؛ پەیوەندی داتا یان دەسەڵات پشکنین بکە', 'bad')
     } finally {
       setSavingMovement(false)
+    }
+  }
+
+  /** سڕینەوەی جوڵەیەکی سەراف — باڵانسەکان یەکسەر ڕاست دەبنەوە */
+  const deleteMovement = async (t: Tx) => {
+    const others = txs.filter((x) => x.id !== t.id)
+    const exchanger = exchangers.find((x) => x.id === t.exchangerId)
+    const after = exchangerBalance(others, t.exchangerId || '', t.currency)
+    const before = exchangerBalance(txs, t.exchangerId || '', t.currency)
+    const tolerance = t.currency === 'USD' ? 0.011 : 1
+    if (after < -tolerance && after < before) {
+      return say('ناتوانرێت بسڕدرێتەوە؛ باڵانسی سەراف دەبێتە ژمارەیەکی نەرێنی. سەرەتا جوڵە دواییەکان ڕاست بکەوە', 'bad')
+    }
+    if (!(await ask(`سڕینەوەی ئەم جوڵەیە؟\n${t.title}\n${money(t.amount, t.currency)} — ${fmtDateShort(t.date)}`))) return
+    if (await remove('txs', t.id, t.title)) {
+      await log('سڕینەوەی جوڵەی سەراف', 'exchangers', exchanger?.id, `${exchanger?.name || ''} — ${money(t.amount, t.currency)}`)
+      say('سڕایەوە', 'info')
     }
   }
 
@@ -216,8 +252,23 @@ export default function ExchangersPage() {
                     <div className="grow min-w-0">
                       <p className="text-sm font-medium truncate">{isTransfer ? 'گواستنەوە بۆ' : 'وەرگرتنەوە لە'} {exchanger?.name || 'سەرافی سڕاوە'}</p>
                       <p className="text-xs text-muted truncate"><span className="num">{fmtDateShort(t.date)}</span>{t.note ? ` · ${t.note}` : ''}</p>
+                      <EditInfo edits={t.edits} at={t.editedAt} by={t.editedByName} />
                     </div>
                     <span className={`num text-sm font-bold shrink-0 ${isTransfer ? 'text-warn' : 'text-ok'}`}>{isTransfer ? '−' : '+'}{money(t.amount, t.currency)}</span>
+                    {can('money.edit') && exchanger && (
+                      <button
+                        onClick={() => setMovement({ exchanger, flow: isTransfer ? 'transfer' : 'return', amount: t.amount, currency: t.currency, date: t.date, note: t.note || '', tx: t })}
+                        className="btn-quiet !p-1.5 shrink-0"
+                        aria-label="دەستکاری جوڵە"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                    )}
+                    {can('money.edit') && (
+                      <button onClick={() => deleteMovement(t)} className="btn-quiet !p-1.5 shrink-0 hover:!text-bad" aria-label="سڕینەوەی جوڵە">
+                        <Trash2 size={15} />
+                      </button>
+                    )}
                   </div>
                 )
               })}
@@ -244,14 +295,31 @@ export default function ExchangersPage() {
       <Sheet
         open={!!movement}
         onClose={() => setMovement(null)}
-        title={movement?.flow === 'transfer' ? `گواستنەوە بۆ ${movement.exchanger.name}` : `وەرگرتنەوە لە ${movement?.exchanger.name || ''}`}
-        footer={<><button className="btn-ghost" disabled={savingMovement} onClick={() => setMovement(null)}>پاشگەزبوونەوە</button><button className="btn-brand" disabled={savingMovement} onClick={saveMovement}>{savingMovement ? <Loader2 size={16} className="animate-spin" /> : null} تۆمارکردن</button></>}
+        title={
+          movement?.tx
+            ? `دەستکاری جوڵە — ${movement.exchanger.name}`
+            : movement?.flow === 'transfer'
+              ? `گواستنەوە بۆ ${movement.exchanger.name}`
+              : `وەرگرتنەوە لە ${movement?.exchanger.name || ''}`
+        }
+        footer={<><button className="btn-ghost" disabled={savingMovement} onClick={() => setMovement(null)}>پاشگەزبوونەوە</button><button className="btn-brand" disabled={savingMovement} onClick={saveMovement}>{savingMovement ? <Loader2 size={16} className="animate-spin" /> : movement?.tx ? <Check size={16} /> : null} {movement?.tx ? 'نوێکردنەوە' : 'تۆمارکردن'}</button></>}
       >
         {movement && (
           <div className="space-y-4">
             <div className={`rounded-xl border px-3 py-2.5 text-[13px] ${movement.flow === 'transfer' ? 'border-warn/35 bg-warn/10 text-ink' : 'border-ok/35 bg-ok/10 text-ink'}`}>
               {movement.flow === 'transfer' ? 'پارە لە سندوقی پێشانگا کەم دەبێت و دەچێتە باڵانسی ئەم سەرافە.' : 'پارە لە سەراف وەردەگیرێت و دەگەڕێتە سندوقی پێشانگا.'}
+              {movement.tx && <EditInfo edits={movement.tx.edits} at={movement.tx.editedAt} by={movement.tx.editedByName} className="mt-1.5" />}
             </div>
+            {movement.tx && (
+              <Field label="ئاراستەی جوڵە">
+                <Segmented
+                  value={movement.flow}
+                  onChange={(flow: Flow) => setMovement({ ...movement, flow })}
+                  options={[{ v: 'transfer' as Flow, label: 'بۆ سەراف' }, { v: 'return' as Flow, label: 'وەرگرتنەوە' }]}
+                  size="sm"
+                />
+              </Field>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <Field label="بڕ"><MoneyInput value={movement.amount} onChange={(amount) => setMovement({ ...movement, amount })} /></Field>
               <Field label="دراو"><Segmented value={movement.currency} onChange={(currency: Currency) => setMovement({ ...movement, currency })} options={[{ v: 'USD', label: '$' }, { v: 'IQD', label: 'د.ع' }]} size="sm" /></Field>
