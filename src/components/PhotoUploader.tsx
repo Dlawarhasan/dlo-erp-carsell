@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { ImagePlus, Star, Trash2, Loader2, X } from 'lucide-react'
 import type { Photo } from '../lib/types'
-import { getRepo } from '../lib/repo'
+import { getPhotoStore, getRepo } from '../lib/repo'
 import { uid } from '../lib/format'
 import { Img, resolvePhoto, thumbOf } from './Img'
 import { Portal } from './Portal'
@@ -36,27 +36,55 @@ export async function compress(file: File | Blob, max = 1500, quality = 0.7): Pr
   return out
 }
 
+/** ئایا وێبگەڕەکە دەتوانێت WebP دروست بکات؟ — لە هەمان قەبارەدا زۆر ڕوونترە لە JPEG */
+let webpOk: boolean | null = null
+async function supportsWebp(): Promise<boolean> {
+  if (webpOk !== null) return webpOk
+  try {
+    const cv = document.createElement('canvas')
+    cv.width = 1
+    cv.height = 1
+    const blob = await new Promise<Blob | null>((res) => cv.toBlob(res, 'image/webp', 0.8))
+    webpOk = !!blob && blob.type === 'image/webp'
+  } catch {
+    webpOk = false
+  }
+  return webpOk
+}
+
 /**
  * دوو وەشان دروست دەکات:
  *  thumb — بچووک (data URL) کە لەگەڵ ئۆتۆمبێلەکەدا خەزن دەکرێت (لیستەکان خێرا دەکات)
- *  full  — وێنەی تەواو، بچووککراوە تاکو لە سنووری Firestore (١ مێگا) کەمتر بێت
+ *  full  — وێنەی تەواو بۆ گەلەری
+ *
+ * لە **Firestore**ـدا وێنە وەک data URL لەناو دۆکیومێنتێکدا خەزن دەکرێت و سنوورەکەی
+ * ١ مێگابایتە، بۆیە قەبارە کەم دەکرێتەوە. لە **Storage/Cloudinary**ـدا ئەو سنوورە
+ * نییە، بۆیە وێنەی ڕوونتر و گەورەتر خەزن دەکرێت.
  */
 async function variants(file: File): Promise<{ full: Blob; thumb: string }> {
   const bmp = await createImageBitmap(file).catch(() => null)
   if (!bmp) return { full: file, thumb: '' }
-  const thumbBlob = await draw(bmp, 360, 0.55)
+
+  const webp = await supportsWebp()
+  const type = webp ? 'image/webp' : 'image/jpeg'
+
+  const thumbBlob = await draw(bmp, webp ? 420 : 360, webp ? 0.62 : 0.55, type)
   const thumb = await toDataUrl(thumbBlob)
 
-  let full = await draw(bmp, 1500, 0.7)
-  const steps: [number, number][] = [
-    [1300, 0.62],
-    [1100, 0.55],
-    [900, 0.5],
-    [720, 0.45],
-  ]
+  const inDoc = getPhotoStore() === 'firestore'
+  /* base64 قەبارە ١.٣٧ ئەوەندە گەورە دەکات، بۆیە سنووری ڕاستەقینە کەمترە */
+  const budget = inDoc ? 700_000 / 1.37 : 2_400_000
+  const start: [number, number] = inDoc ? [1600, webp ? 0.82 : 0.7] : [2000, webp ? 0.86 : 0.78]
+  const steps: [number, number][] = inDoc
+    ? webp
+      ? [[1400, 0.78], [1200, 0.72], [1000, 0.66], [820, 0.6]]
+      : [[1300, 0.62], [1100, 0.55], [900, 0.5], [720, 0.45]]
+    : [[1800, webp ? 0.82 : 0.74], [1600, webp ? 0.78 : 0.7]]
+
+  let full = await draw(bmp, start[0], start[1], type)
   for (const [m, q] of steps) {
-    if (full.size * 1.37 < 700_000) break
-    full = await draw(bmp, m, q)
+    if (full.size <= budget) break
+    full = await draw(bmp, m, q, type)
   }
   bmp.close?.()
   return { full, thumb }

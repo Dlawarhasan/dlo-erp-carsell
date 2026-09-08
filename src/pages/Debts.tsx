@@ -144,19 +144,22 @@ export default function Debts() {
             )}
           </div>
           {all && (
-            <div className="w-40 shrink-0">
-              <Segmented
-                size="sm"
-                value={allCur}
-                onChange={setAllCur}
-                options={[
-                  { v: 'IQD' as Currency, label: 'کۆ بە دینار' },
-                  { v: 'USD' as Currency, label: 'کۆ بە دۆلار' },
-                ]}
-              />
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[11px] text-muted shrink-0">کۆ بە</span>
+              <div className="w-32 shrink-0">
+                <Segmented
+                  size="sm"
+                  value={allCur}
+                  onChange={setAllCur}
+                  options={[
+                    { v: 'IQD' as Currency, label: 'دینار' },
+                    { v: 'USD' as Currency, label: 'دۆلار' },
+                  ]}
+                />
+              </div>
             </div>
           )}
-          <div className="w-48 shrink-0">
+          <div className="w-56 shrink-0">
             <Segmented
               size="sm"
               value={cur}

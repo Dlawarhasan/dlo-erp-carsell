@@ -300,14 +300,15 @@ export function Segmented<T extends string>({
   size?: 'sm' | 'md'
 }) {
   return (
-    <div className="inline-flex bg-surface2 border border-line rounded-xl p-1 gap-1 w-full">
+    <div className="flex bg-surface2 border border-line rounded-xl p-1 gap-1 w-full overflow-hidden">
       {options.map((o) => (
         <button
           key={o.v}
           type="button"
           onClick={() => onChange(o.v)}
-          className={`flex-1 rounded-lg font-medium transition whitespace-nowrap ${
-            size === 'sm' ? 'px-2.5 py-1.5 text-[13px]' : 'px-3 py-2 text-sm'
+          /* `min-w-0` + `truncate` ڕێگری لەوە دەکات دوگمە درێژەکان لە چوارچێوەکە بپەڕنەوە */
+          className={`flex-1 min-w-0 truncate rounded-lg font-medium transition text-center ${
+            size === 'sm' ? 'px-2 py-1.5 text-[13px]' : 'px-3 py-2 text-sm'
           } ${value === o.v ? 'bg-brand text-brandInk' : 'text-muted hover:text-ink'}`}
         >
           {o.label}
