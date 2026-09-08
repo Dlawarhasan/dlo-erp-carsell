@@ -150,8 +150,9 @@ ${settings.showroomName} ${settings.phone ? '— ' + settings.phone : ''}`
         {/* گەلەری */}
         {photos.length > 0 ? (
           <div className="grid grid-cols-4 gap-2 rounded-2xl overflow-hidden">
-            <button onClick={() => setGallery(0)} className={`${photos.length > 1 ? 'col-span-3' : 'col-span-4'} aspect-[16/10] bg-surface2`}>
-              <img src={thumbOf(photos.find((p) => p.cover) || photos[0])} alt="" className="w-full h-full object-cover" />
+            {/* وێنەی سەرەکی بە قەبارەی تەواو — سەرەتا بچووکەکە پیشان دەدات، پاشان ڕوونەکە */}
+            <button onClick={() => setGallery(0)} className={`${photos.length > 1 ? 'col-span-3' : 'col-span-4'} aspect-[16/10] bg-surface2 overflow-hidden`}>
+              <Img photo={photos.find((p) => p.cover) || photos[0]} full className="w-full h-full" />
             </button>
             {photos.length > 1 && (
               <div className="flex flex-col gap-2">

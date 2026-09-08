@@ -200,15 +200,16 @@ export default function Ledger() {
                   <p className="text-[10px] text-muted">{bal.IQD > 0 ? 'قەرزارمە' : bal.IQD < 0 ? 'قەرزارم' : 'پاک'}</p>
                 </div>
               </div>
-              <div className="mt-3 flex justify-center no-print">
-                <div className="w-40">
+              <div className="mt-3 flex items-center justify-center gap-2 no-print">
+                <span className="text-[11px] text-muted shrink-0">کۆی گشتی بە</span>
+                <div className="w-36 shrink-0">
                   <Segmented
                     size="sm"
                     value={totalCur}
                     onChange={setTotalCur}
                     options={[
-                      { v: 'IQD' as Currency, label: 'کۆ بە دینار' },
-                      { v: 'USD' as Currency, label: 'کۆ بە دۆلار' },
+                      { v: 'IQD' as Currency, label: 'دینار' },
+                      { v: 'USD' as Currency, label: 'دۆلار' },
                     ]}
                   />
                 </div>
