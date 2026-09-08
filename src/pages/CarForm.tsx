@@ -12,6 +12,7 @@ import { BRANDS, BRAND_LIST, COLORS, BODY_TYPES, FUELS, TRANSMISSIONS, CYLINDERS
 import type { Car, Currency, PartState, Photo } from '../lib/types'
 import { cleanVin, kmToMiles, milesToKm, money, todayISO, uid, VIN_RE, vinChecksumOk, vinYear } from '../lib/format'
 import { partnerFunded, partnerPctOf } from '../lib/partners'
+import { withEdit } from '../lib/edits'
 import { decodeVin, type VinInfo } from '../lib/vin'
 import { fx } from '../lib/feedback'
 
@@ -224,6 +225,22 @@ export default function CarForm() {
             createdAt: now + 1,
             createdBy: user?.uid,
           })
+        }
+      }
+      /*
+       * دەستکاری ئۆتۆمبێلێکی تۆمارکراو: ئەگەر جوڵەی کڕینی هەبێت، نرخ و بەرواری
+       * ئەویش پێوە دەگۆڕێت تا سندوق و حسابات لەگەڵ ئۆتۆمبێلەکە یەک بگرنەوە.
+       */
+      if (editing) {
+        const buyTx = txs.find((t) => t.carId === car.id && t.category === 'car_buy')
+        if (buyTx && (buyTx.amount !== car.buyPrice || buyTx.currency !== car.buyCurrency || buyTx.date !== (car.buyDate || buyTx.date))) {
+          await save('txs', withEdit({
+            ...buyTx,
+            amount: car.buyPrice,
+            currency: car.buyCurrency,
+            date: car.buyDate || buyTx.date,
+            title: `کڕینی ${car.brand} ${car.model} ${car.year}`,
+          }, user))
         }
       }
       await log(editing ? 'دەستکاری ئۆتۆمبێل' : 'تۆمارکردنی ئۆتۆمبێل', 'cars', car.id, `${car.brand} ${car.model} — ${car.vin}`)

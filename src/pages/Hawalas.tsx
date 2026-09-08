@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { CircleX, Landmark, Loader2, Plus, ReceiptText, Send, Wallet } from 'lucide-react'
+import { CircleX, Landmark, Loader2, Plus, ReceiptText, Send, Trash2, Wallet } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { PageHead } from '../components/Layout'
 import { Empty, Field, MoneyInput, Picker, Segmented, Sheet, Stat, useConfirm } from '../components/ui'
@@ -176,6 +176,32 @@ export default function HawalasPage() {
     }
   }
 
+  /**
+   * سڕینەوەی تەواوی حەواڵە — خۆی و هەموو جوڵەکانی پارەی.
+   * بۆ هەڵەی تۆمارکردن؛ ئەگەر حەواڵەکە بەڕاستی ڕۆیشتووە،
+   * «هەڵوەشاندنەوە» ڕاستترە چونکە مێژووەکە دەپارێزێت.
+   */
+  const removeHawala = async (hawala: Hawala) => {
+    const linked = txs.filter((t) => t.hawalaId === hawala.id)
+    const rest = txs.filter((t) => !linked.some((x) => x.id === t.id))
+    const after = exchangerBalance(rest, hawala.exchangerId, hawala.currency)
+    const tolerance = hawala.currency === 'USD' ? 0.011 : 1
+    if (after < -tolerance) {
+      return say('ناتوانرێت بسڕدرێتەوە؛ باڵانسی سەراف دەبێتە نەرێنی. سەرەتا جوڵە دواییەکان ڕاست بکەوە', 'bad')
+    }
+    if (!(await ask(`سڕینەوەی تەواوی ئەم حەواڵەیە؟\n${hawala.recipientName} — ${money(hawala.amount, hawala.currency)}\nهەموو جوڵەکانی پارەشی لەگەڵ دەسڕدرێنەوە.`))) return
+    try {
+      await commit([
+        ...linked.map((t) => ({ kind: 'del' as const, coll: 'txs' as const, id: t.id })),
+        { kind: 'del' as const, coll: 'hawalas' as const, id: hawala.id },
+      ])
+      await log('سڕینەوەی حەواڵە', 'hawalas', hawala.id, `${hawala.recipientName} — ${money(hawala.amount, hawala.currency)}`)
+      say('حەواڵەکە سڕایەوە', 'info')
+    } catch {
+      say('نەتوانرا حەواڵەکە بسڕدرێتەوە؛ دەسەڵات و پەیوەندی داتا پشکنین بکە', 'bad')
+    }
+  }
+
   if (!can('money.view')) return <Empty icon={<Wallet size={26} />} title="دەسەڵاتت نییە" />
 
   return (
@@ -232,6 +258,7 @@ export default function HawalasPage() {
                         {hawala.fee > 0 && <p className="num text-[11px] text-muted">کرێ {money(hawala.fee, hawala.currency)}</p>}
                       </div>
                       {!cancelled && can('money.edit') && <button disabled={!!cancellingId} onClick={() => cancel(hawala)} className="btn-quiet !p-2 text-muted hover:!text-bad disabled:opacity-45" aria-label="هەڵوەشاندنەوەی حەواڵە">{cancellingId === hawala.id ? <Loader2 size={17} className="animate-spin" /> : <CircleX size={17} />}</button>}
+                      {can('contract.delete') && <button onClick={() => removeHawala(hawala)} className="btn-quiet !p-2 text-muted hover:!text-bad" aria-label="سڕینەوەی حەواڵە"><Trash2 size={16} /></button>}
                     </div>
                   )
                 })}

@@ -148,6 +148,12 @@ export interface Contract {
   createdAt: number
   createdBy?: string
   createdByName?: string
+  /** چەند جار دەستکاری کراوە */
+  edits?: number
+  /** کاتی کۆتا دەستکاری */
+  editedAt?: number
+  editedBy?: string
+  editedByName?: string
 }
 
 export type TxCategory =
@@ -197,6 +203,12 @@ export interface Tx {
   note?: string
   createdAt: number
   createdBy?: string
+  /** چەند جار دەستکاری کراوە */
+  edits?: number
+  /** کاتی کۆتا دەستکاری */
+  editedAt?: number
+  editedBy?: string
+  editedByName?: string
 }
 
 export interface Partner {
@@ -418,6 +430,12 @@ export interface LedgerEntry {
   at: number
   by?: string
   byName?: string
+  /** چەند جار دەستکاری کراوە */
+  edits?: number
+  /** کاتی کۆتا دەستکاری */
+  editedAt?: number
+  editedBy?: string
+  editedByName?: string
 }
 
 export interface Account {

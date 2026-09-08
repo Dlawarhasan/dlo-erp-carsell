@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Printer, Languages, Trash2, Ban, CheckCircle2, Loader2, Wallet, Share2, Car as CarIcon } from 'lucide-react'
+import { Printer, Languages, Trash2, Ban, CheckCircle2, Loader2, Wallet, Share2, Car as CarIcon, Pencil } from 'lucide-react'
 import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
 import { ContractSheet } from '../components/ContractSheet'
-import { Empty, Field, MoneyInput, Segmented, Sheet, useConfirm } from '../components/ui'
+import { EditInfo, Empty, Field, MoneyInput, Segmented, Sheet, useConfirm } from '../components/ui'
+import { ContractEditor } from '../components/ContractEditor'
 import { contractDebt, contractPaid } from '../lib/finance'
 import { fmtDate, fmtDateShort, money, todayISO, uid } from '../lib/format'
 
@@ -16,6 +17,7 @@ export default function ContractView() {
   const { ask, node } = useConfirm()
   const [lang, setLang] = useState<'ku' | 'ar'>('ku')
   const [pay, setPay] = useState<{ no: number; amount: number } | null>(null)
+  const [edit, setEdit] = useState(false)
   const [payBusy, setPayBusy] = useState(false)
   const [cancelBusy, setCancelBusy] = useState(false)
 
@@ -148,6 +150,11 @@ export default function ContractView() {
               <CarIcon size={17} /> ئۆتۆمبێل
             </button>
           )}
+          {can('contract.create') && (
+            <button onClick={() => setEdit(true)} className="btn-ghost">
+              <Pencil size={17} /> دەستکاری
+            </button>
+          )}
           {c.status === 'active' && can('contract.delete') && (
             <button disabled={cancelBusy} onClick={cancel} className="btn-ghost !text-warn disabled:opacity-45">
               {cancelBusy ? <Loader2 size={17} className="animate-spin" /> : <Ban size={17} />} هەڵوەشاندنەوە
@@ -211,6 +218,7 @@ export default function ContractView() {
         </div>
 
         <p className="text-xs text-muted text-center no-print pb-6">
+          <EditInfo edits={c.edits} at={c.editedAt} by={c.editedByName} className="justify-center mb-1" />
           دروستکراوە لەلایەن {c.createdByName || '—'} · <span className="num">{fmtDate(c.createdAt)}</span>
           <br />
           بۆ PDF: لە پەنجەرەی پرینت «Save as PDF» هەڵبژێرە.
@@ -239,6 +247,8 @@ export default function ContractView() {
           </div>
         </Field>
       </Sheet>
+
+      {edit && <ContractEditor c={c} onClose={() => setEdit(false)} />}
 
       {node}
     </>

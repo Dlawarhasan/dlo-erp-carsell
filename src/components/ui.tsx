@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { X, Search, ChevronDown, Check, AlertTriangle } from 'lucide-react'
+import { X, Search, ChevronDown, Check, AlertTriangle, Pencil } from 'lucide-react'
 import { Portal } from './Portal'
 
 /* ---------------- Sheet / Modal ---------------- */
@@ -401,6 +401,42 @@ export function Empty({ icon, title, sub, action }: { icon?: React.ReactNode; ti
       {sub && <p className="text-sm text-muted max-w-xs leading-6">{sub}</p>}
       {action && <div className="mt-5">{action}</div>}
     </div>
+  )
+}
+
+/* ---------------- مێژووی دەستکاری ---------------- */
+/**
+ * پیشاندانی ئەوەی چەند جار دەستکاری کراوە و کەی کۆتا جار بووە.
+ * ئەگەر هیچ دەستکارییەک نەکرابێت، هیچ پیشان نادرێت.
+ */
+export function EditInfo({
+  edits,
+  at,
+  by,
+  className = '',
+}: {
+  edits?: number
+  at?: number
+  by?: string
+  className?: string
+}) {
+  if (!edits) return null
+  const d = at ? new Date(at) : null
+  const p = (n: number) => String(n).padStart(2, '0')
+  const when = d
+    ? `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} — ${p(d.getHours())}:${p(d.getMinutes())}`
+    : ''
+  return (
+    <span className={`text-[11px] text-warn inline-flex items-center gap-1 flex-wrap ${className}`}>
+      <Pencil size={10} className="shrink-0" />
+      <span className="num">{edits}</span> جار دەستکاری کراوە
+      {when && (
+        <>
+          {' · '}کۆتا جار <span className="num">{when}</span>
+        </>
+      )}
+      {by ? ` · ${by}` : ''}
+    </span>
   )
 }
 
