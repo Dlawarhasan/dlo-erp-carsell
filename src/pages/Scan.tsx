@@ -76,8 +76,8 @@ export default function Scan() {
 
         {searched && found && (
           <div className="space-y-3 animate-in">
-            <p className="text-sm text-ok flex items-center gap-2 bg-ok/10 border border-ok/25 rounded-xl px-3.5 py-2.5">
-              ئۆتۆمبێلەکە دۆزرایەوە
+            <p className={`text-sm flex items-center gap-2 rounded-xl px-3.5 py-2.5 border ${found.status === 'sold' ? 'text-info bg-info/10 border-info/25' : 'text-ok bg-ok/10 border-ok/25'}`}>
+              {found.status === 'sold' ? 'ئەم ئۆتۆمبێلە پێشتر هی خۆمان بووە و فرۆشراوە' : 'ئۆتۆمبێلەکە دۆزرایەوە'}
             </p>
             <CarCard car={found} onClick={() => nav(`/cars/${found.id}`)} />
             <div className="grid grid-cols-2 gap-2.5">
@@ -87,6 +87,12 @@ export default function Scan() {
               {found.status !== 'sold' && can('contract.create') && (
                 <button onClick={() => nav(`/sell/${found.id}`)} className="btn-brand">
                   <Handshake size={17} /> فرۆشتن
+                </button>
+              )}
+              {/* پێشتر فرۆشراوە → دەکرێت دووبارە بکڕدرێتەوە و لە نوێوە تۆمار بکرێت */}
+              {found.status === 'sold' && can('car.edit') && (
+                <button onClick={() => nav('/cars/new', { state: { vin: found.vin } })} className="btn-brand">
+                  <Plus size={17} /> کڕدراوەتەوە — تۆمارکردن
                 </button>
               )}
             </div>
