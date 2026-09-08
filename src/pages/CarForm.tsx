@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ScanLine, Save, Loader2, AlertTriangle, Car as CarIcon, Palette, Gauge, Wallet, Camera, Wrench, Sparkles, WifiOff, Check, UserPlus, Handshake } from 'lucide-react'
+import { ScanLine, Save, Loader2, AlertTriangle, Car as CarIcon, Palette, Gauge, Wallet, Camera, Wrench, Sparkles, WifiOff, Check, UserPlus, Handshake, History, Eye, Copy } from 'lucide-react'
 import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
 import { Field, Picker, Segmented, MoneyInput, Sheet } from '../components/ui'
@@ -10,7 +10,7 @@ import { PhotoUploader } from '../components/PhotoUploader'
 import { VinScanner } from '../components/VinScanner'
 import { BRANDS, BRAND_LIST, COLORS, BODY_TYPES, FUELS, TRANSMISSIONS, CYLINDERS, DRIVES, ORIGINS, CAR_STATUS } from '../lib/catalog'
 import type { Car, Currency, PartState, Photo } from '../lib/types'
-import { cleanVin, kmToMiles, milesToKm, money, todayISO, uid, VIN_RE, vinChecksumOk, vinYear } from '../lib/format'
+import { cleanVin, fmtDateShort, kmToMiles, milesToKm, money, todayISO, uid, VIN_RE, vinChecksumOk, vinYear } from '../lib/format'
 import { partnerFunded, partnerPctOf } from '../lib/partners'
 import { withEdit } from '../lib/edits'
 import { decodeVin, type VinInfo } from '../lib/vin'
@@ -62,12 +62,11 @@ export default function CarForm() {
   const nav = useNavigate()
   const loc = useLocation()
   const preVin = (loc.state as { vin?: string } | null)?.vin || ''
-  const { cars, partners, txs, save, log, say, user, settings, can } = useApp()
+  const { cars, partners, txs, contracts, save, log, say, user, settings, can } = useApp()
   const editing = cars.find((c) => c.id === id)
   const [c, setC] = useState<Car>(() => (editing ? { ...empty(), ...editing } : { ...empty(), vin: cleanVin(preVin).slice(0, 17), year: vinYear(preVin) || new Date().getFullYear() }))
   const [scan, setScan] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [dup, setDup] = useState<Car | null>(null)
   const [lookup, setLookup] = useState(false)
   const [found, setFound] = useState<VinInfo | null>(null)
   /* کێ پشکی شەریکی لە نرخی کڕیندا داوە */
@@ -102,12 +101,50 @@ export default function CarForm() {
     const v = cleanVin(raw).slice(0, 17)
     set('vin', v)
     if (v.length === 17) {
-      const other = cars.find((x) => x.vin === v && x.id !== c.id)
-      setDup(other || null)
       const y = vinYear(v)
       if (y && !editing) set('year', y)
-    } else setDup(null)
+    }
     setFound(null)
+  }
+
+  /*
+   * هەمان VIN لە تۆمارەکانی تردا:
+   *  · ئەگەر هێشتا لە کۆگا بێت (نەفرۆشراو) → ڕێگری، چونکە دووبارە تۆمارکردنە
+   *  · ئەگەر فرۆشرابێت → تەنها ئاگادارکردنەوە: ئەم ئۆتۆمبێلە پێشتر هی خۆمان بووە
+   */
+  const sameVin = useMemo(
+    () => (vinOk ? cars.filter((x) => x.vin === c.vin && x.id !== c.id) : []),
+    [cars, c.vin, c.id, vinOk],
+  )
+  const dup = sameVin.find((x) => x.status !== 'sold') || null
+  const history = useMemo(
+    () => sameVin.filter((x) => x.status === 'sold').sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)),
+    [sameVin],
+  )
+  /** عەقدی فرۆشتنی تۆمارێکی کۆن — بۆ پیشاندانی بەروار و نرخ */
+  const saleOf = (id: string) => contracts.find((x) => x.carId === id && x.type === 'sale' && x.status !== 'cancelled')
+
+  /** زانیاری ناسنامە و پارچەکان لە تۆمارە کۆنەکەوە دەهێنێت — پارە و کیلۆمەتر نا */
+  const copyFrom = (h: Car) => {
+    setC((p) => ({
+      ...p,
+      brand: h.brand,
+      model: h.model,
+      trim: h.trim,
+      year: h.year,
+      color: h.color,
+      bodyType: h.bodyType,
+      fuel: h.fuel,
+      transmission: h.transmission,
+      cylinders: h.cylinders,
+      drive: h.drive,
+      origin: h.origin,
+      plate: h.plate,
+      keys: h.keys,
+      body: { ...(h.body || {}) },
+      bodyNote: h.bodyNote,
+    }))
+    say('زانیارییەکان هێنران — کیلۆمەتر و نرخی کڕین خۆت بنووسەوە')
   }
 
   /** زانیاری لە VIN دەهێنێت و خانە بەتاڵەکان پڕ دەکاتەوە — هیچ شتێکی نووسراو ناگۆڕێت */
@@ -274,7 +311,7 @@ export default function CarForm() {
           <div className="space-y-4">
             <Field
               label="ژمارەی شانس — VIN"
-              error={dup ? 'ئەم VIN پێشتر تۆمارکراوە!' : c.vin && !vinOk ? 'دەبێت ١٧ پیت بێت (بێ I, O, Q)' : ''}
+              error={dup ? 'ئەم VIN لە ئێستادا لە کۆگادایە!' : c.vin && !vinOk ? 'دەبێت ١٧ پیت بێت (بێ I, O, Q)' : ''}
               hint={vinWarn ? 'ئاگاداری: پشکنینی ناوەکی VIN نەگونجا — زۆرجار ئاساییە بۆ ئۆتۆمبێلی ئەوروپی/یابانی' : guessedYear ? `ساڵی خەمڵێنراو لە VIN: ${guessedYear}` : ''}
             >
               <div className="flex gap-2">
@@ -297,6 +334,50 @@ export default function CarForm() {
                   </button>
                 )}
               </div>
+
+              {/* ── پێشتر هی خۆمان بووە و فرۆشراوە → دووبارە تۆمارکردن ڕێگەپێدراوە ── */}
+              {!dup && history.length > 0 && !editing && (
+                <div className="mt-2.5 rounded-xl border border-info/30 bg-info/8 p-3 space-y-2.5">
+                  <p className="text-[13px] font-medium flex items-center gap-1.5 flex-wrap">
+                    <History size={15} className="text-info shrink-0" />
+                    ئەم ئۆتۆمبێلە پێشتر هی خۆمان بووە —
+                    <span className="num">{history.length}</span> جار تۆمارکراوە و فرۆشراوەتەوە
+                  </p>
+
+                  {history.map((h) => {
+                    const sale = saleOf(h.id)
+                    return (
+                      <div key={h.id} className="rounded-lg border border-line bg-surface px-3 py-2 flex items-center gap-2 flex-wrap">
+                        <div className="grow min-w-0">
+                          <p className="text-[13px] font-medium truncate">
+                            {h.brand} {h.model} <span className="num text-muted">{h.year}</span>
+                            {h.color ? <span className="text-muted"> · {h.color}</span> : ''}
+                          </p>
+                          <p className="text-[11px] text-muted">
+                            کڕدراوە <span className="num">{fmtDateShort(h.buyDate)}</span>
+                            {sale && (
+                              <>
+                                {' · '}فرۆشراوە <span className="num">{fmtDateShort(sale.date)}</span>
+                                {can('money.view') && <> بە <span className="num">{money(sale.price, sale.currency)}</span></>}
+                              </>
+                            )}
+                          </p>
+                        </div>
+                        <button type="button" onClick={() => nav(`/cars/${h.id}`)} className="btn-ghost !py-1.5 !px-2.5 !text-[12px] shrink-0">
+                          <Eye size={14} /> بینین
+                        </button>
+                        <button type="button" onClick={() => copyFrom(h)} className="btn-brand !py-1.5 !px-2.5 !text-[12px] shrink-0">
+                          <Copy size={14} /> هێنانی زانیارییەکان
+                        </button>
+                      </div>
+                    )
+                  })}
+
+                  <p className="text-[11px] text-muted leading-5">
+                    بەردەوام بە و لە نوێوە تۆماری بکە — تۆمارە کۆنەکە و حساباتی هەروەک خۆی دەمێنێتەوە.
+                  </p>
+                </div>
+              )}
 
               {/* هێنانی زانیاری لە VIN */}
               {vinOk && !dup && (

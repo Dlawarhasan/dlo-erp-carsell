@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   Pencil, Trash2, Handshake, Plus, Gauge, Fuel, Cog, Palette, MapPin, Calendar, KeyRound,
-  FileText, TrendingUp, Share2, X, Wallet, Check,
+  FileText, TrendingUp, Share2, X, Wallet, Check, History, Eye,
 } from 'lucide-react'
 import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
@@ -42,6 +42,11 @@ export default function CarDetail() {
     [car, cars, txs, contracts, settings.usdRate],
   )
   const partner = partners.find((p) => p.id === car?.partnerId)
+  /* تۆمارە کۆنەکانی هەمان ئۆتۆمبێل — کڕدراوەتەوە دوای فرۆشتن */
+  const twins = useMemo(
+    () => (car?.vin ? cars.filter((x) => x.vin === car.vin && x.id !== car.id).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)) : []),
+    [cars, car?.vin, car?.id],
+  )
   const contract = contracts.find((c) => c.carId === id && c.status !== 'cancelled')
 
   if (!car) return <Empty icon={<X size={26} />} title="ئۆتۆمبێلەکە نەدۆزرایەوە" />
@@ -188,6 +193,48 @@ ${settings.showroomName} ${settings.phone ? '— ' + settings.phone : ''}`
             </button>
           )}
         </div>
+
+        {/* مێژووی هەمان ئۆتۆمبێل لای ئێمە */}
+        {twins.length > 0 && (
+          <div className="card p-4 sm:p-5">
+            <h2 className="font-bold flex items-center gap-2">
+              <History size={17} className="text-info" /> مێژووی ئەم ئۆتۆمبێلە لای ئێمە
+            </h2>
+            <p className="text-[12.5px] text-muted mt-1 mb-3">
+              هەمان VIN — <span className="num">{twins.length}</span> تۆماری تر
+            </p>
+            <div className="space-y-2">
+              {twins.map((t) => {
+                const sale = contracts.find((x) => x.carId === t.id && x.type === 'sale' && x.status !== 'cancelled')
+                const st = CAR_STATUS[t.status]
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => nav(`/cars/${t.id}`)}
+                    className="w-full flex items-center gap-3 rounded-xl border border-line bg-surface2 px-3.5 py-2.5 text-start hover:border-brand/50"
+                  >
+                    <div className="grow min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {t.brand} {t.model} <span className="num text-muted">{t.year}</span>
+                        <span className={`chip !text-[10px] !py-0 ms-2 ${st.cls}`}>{st.ku}</span>
+                      </p>
+                      <p className="text-[12px] text-muted">
+                        کڕدراوە <span className="num">{fmtDate(t.buyDate)}</span>
+                        {sale && (
+                          <>
+                            {' · '}فرۆشراوە <span className="num">{fmtDate(sale.date)}</span>
+                            {can('money.view') && <> بە <span className="num">{money(sale.price, sale.currency)}</span></>}
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    <Eye size={16} className="text-muted shrink-0" />
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* تایبەتمەندییەکان */}
         <div className="card p-4 sm:p-5">
