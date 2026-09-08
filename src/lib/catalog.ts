@@ -196,6 +196,7 @@ export const TX_CATEGORY_KU: Record<string, string> = {
   withdraw: 'دەرهێنانی پارە',
   commission: 'کۆمیشن',
   partner: 'پشکی شەریک',
+  partner_in: 'پارەی شەریک (سەرمایە/قەرزدانەوە)',
   debt_in: 'وەرگرتنی قەرزی کۆن',
   debt_out: 'دانەوەی قەرزی کۆن',
   exchange_transfer: 'گواستنەوە بۆ سەراف',

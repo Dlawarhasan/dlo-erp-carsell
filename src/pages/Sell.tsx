@@ -5,7 +5,7 @@ import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
 import { Field, MoneyInput, Picker, Segmented, Empty } from '../components/ui'
 import { CITIES } from '../lib/catalog'
-import { addMonths, convert, fmtDate, money, num, todayISO, uid } from '../lib/format'
+import { addMonths, convert, fmtDate, kmToMiles, money, num, todayISO, uid } from '../lib/format'
 import { amountWordsKu } from '../lib/numwords'
 import { fx } from '../lib/feedback'
 import type { Contract, Currency, CurrencyPayment, Customer, Installment } from '../lib/types'
@@ -492,7 +492,10 @@ export default function Sell() {
             <h2 className="font-bold">پێداچوونەوەی کۆتایی</h2>
             <Row k="ئۆتۆمبێل" v={`${car.brand} ${car.model} ${car.year} — ${car.color}`} />
             <Row k="VIN" v={<span className="num" dir="ltr">{car.vin}</span>} />
-            <Row k="کیلۆمەتر" v={<span className="num">{num(car.km)}</span>} />
+            <Row
+              k={car.odoUnit === 'mi' ? 'مایل' : 'کیلۆمەتر'}
+              v={<span className="num">{num(car.odoUnit === 'mi' ? Math.round(kmToMiles(car.km)) : Math.round(car.km || 0))}</span>}
+            />
             <Row k="کریار" v={mode === 'existing' ? `${buyer?.name} — ${buyer?.phone}` : `${nb.name} — ${nb.phone}`} />
             <Row k="نرخ" v={<span className="num font-bold text-brand">{money(price, currency)}</span>} />
             <Row k="شێوازی پارەدان" v={payment === 'cash' ? 'نەقد' : `قیست — پێشەکی ${money(down, currency)} + ${schedule.length} قیست`} />

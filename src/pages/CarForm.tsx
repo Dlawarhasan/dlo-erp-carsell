@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ScanLine, Save, Loader2, AlertTriangle, Car as CarIcon, Palette, Gauge, Wallet, Camera, Wrench, Sparkles, WifiOff, Check } from 'lucide-react'
+import { ScanLine, Save, Loader2, AlertTriangle, Car as CarIcon, Palette, Gauge, Wallet, Camera, Wrench, Sparkles, WifiOff, Check, UserPlus, Handshake } from 'lucide-react'
 import { useApp } from '../store/app'
 import { PageHead } from '../components/Layout'
-import { Field, Picker, Segmented, MoneyInput } from '../components/ui'
+import { Field, Picker, Segmented, MoneyInput, Sheet } from '../components/ui'
 import { OptionPicker } from '../components/OptionPicker'
 import { DamageMap } from '../components/DamageMap'
 import { PhotoUploader } from '../components/PhotoUploader'
 import { VinScanner } from '../components/VinScanner'
 import { BRANDS, BRAND_LIST, COLORS, BODY_TYPES, FUELS, TRANSMISSIONS, CYLINDERS, DRIVES, ORIGINS, CAR_STATUS } from '../lib/catalog'
 import type { Car, Currency, PartState, Photo } from '../lib/types'
-import { cleanVin, todayISO, uid, VIN_RE, vinChecksumOk, vinYear } from '../lib/format'
+import { cleanVin, kmToMiles, milesToKm, money, todayISO, uid, VIN_RE, vinChecksumOk, vinYear } from '../lib/format'
+import { partnerFunded, partnerPctOf } from '../lib/partners'
 import { decodeVin, type VinInfo } from '../lib/vin'
 import { fx } from '../lib/feedback'
 
@@ -60,7 +61,7 @@ export default function CarForm() {
   const nav = useNavigate()
   const loc = useLocation()
   const preVin = (loc.state as { vin?: string } | null)?.vin || ''
-  const { cars, partners, save, log, say, user, settings } = useApp()
+  const { cars, partners, txs, save, log, say, user, settings, can } = useApp()
   const editing = cars.find((c) => c.id === id)
   const [c, setC] = useState<Car>(() => (editing ? { ...empty(), ...editing } : { ...empty(), vin: cleanVin(preVin).slice(0, 17), year: vinYear(preVin) || new Date().getFullYear() }))
   const [scan, setScan] = useState(false)
@@ -68,6 +69,10 @@ export default function CarForm() {
   const [dup, setDup] = useState<Car | null>(null)
   const [lookup, setLookup] = useState(false)
   const [found, setFound] = useState<VinInfo | null>(null)
+  /* کێ پشکی شەریکی لە نرخی کڕیندا داوە */
+  const [fund, setFund] = useState<'partner' | 'showroom' | 'partial'>('partner')
+  const [partnerPart, setPartnerPart] = useState(0)
+  const [newPartner, setNewPartner] = useState<{ name: string; phone: string } | null>(null)
 
   const set = <K extends keyof Car>(k: K, v: Car[K]) => setC((p) => ({ ...p, [k]: v }))
 
@@ -137,7 +142,37 @@ export default function CarForm() {
     }
   }
 
-  const valid = vinOk && c.brand && c.model && c.color && !dup
+  /* ═══ حساباتی پشکی شەریک لە کاتی کڕین ═══ */
+  const pct = partnerPctOf(c)
+  const partner = partners.find((p) => p.id === c.partnerId)
+  const shareOfBuy = Math.round((((c.buyPrice || 0) * pct) / 100) * 100) / 100
+  const partnerGave = c.ownership !== 'partnership' ? 0 : fund === 'partner' ? shareOfBuy : fund === 'showroom' ? 0 : Math.min(partnerPart, shareOfBuy)
+  const partnerDebt = Math.max(0, shareOfBuy - partnerGave)
+  const fromCashbox = Math.max(0, (c.buyPrice || 0) - partnerGave)
+  /* بۆ دەستکاری: ئەوەی پێشتر تۆمارکراوە لە جوڵەی پارەکاندا */
+  const recorded = useMemo(() => {
+    if (!editing || !c.partnerId) return null
+    const funded = partnerFunded(txs, c.partnerId, c.id, settings.usdRate)
+    return { funded, debt: Math.max(0, shareOfBuy - funded) }
+  }, [editing, c.partnerId, c.id, txs, settings.usdRate, shareOfBuy])
+
+  const valid = !!(vinOk && c.brand && c.model && c.color && !dup && (c.ownership === 'owned' || c.partnerId))
+
+  const addPartner = async () => {
+    const name = (newPartner?.name || '').trim()
+    if (!name) return say('ناوی شەریک پێویستە', 'bad')
+    if (partners.some((p) => p.name.trim() === name)) return say('ئەم ناوە پێشتر تۆمارکراوە', 'bad')
+    const p = { id: uid('prt'), name, phone: (newPartner?.phone || '').trim() || undefined, createdAt: Date.now() }
+    try {
+      await save('partners', p)
+      await log('زیادکردنی شەریک', 'partners', p.id, p.name)
+      set('partnerId', p.id)
+      setNewPartner(null)
+      say('شەریک زیادکرا')
+    } catch {
+      say('نەتوانرا شەریک زیاد بکرێت', 'bad')
+    }
+  }
 
   const submit = async () => {
     if (!valid) {
@@ -149,8 +184,14 @@ export default function CarForm() {
       const now = Date.now()
       const car: Car = { ...c, vin: cleanVin(c.vin), updatedAt: now, createdBy: c.createdBy || user?.uid }
       await save('cars', car)
-      // تۆمارکردنی کڕین لە سندوق (تەنها بۆ ئۆتۆمبێلی نوێ)
-      if (!editing && car.buyPrice > 0 && car.ownership === 'owned') {
+      /*
+       * تۆمارکردنی کڕین لە سندوق (تەنها بۆ ئۆتۆمبێلی نوێ).
+       * ئەمانەت پارەی لەسەر نادرێت، بۆیە هیچ جوڵەیەکی پارەی بۆ ناکرێت.
+       * لە شەریکیدا نرخی تەواو وەک دەرچوون تۆمار دەکرێت، و ئەو بڕەی
+       * شەریک خۆی داویەتی وەک هاتنە ژوورەوە — کۆی دەرچوونی سندوق
+       * دەبێتە نرخی کڕین کەم پشکی شەریک.
+       */
+      if (!editing && car.buyPrice > 0 && car.ownership !== 'consignment') {
         await save('txs', {
           id: uid('tx'),
           date: car.buyDate || todayISO(),
@@ -166,6 +207,24 @@ export default function CarForm() {
           createdAt: now,
           createdBy: user?.uid,
         })
+        if (car.ownership === 'partnership' && car.partnerId && partnerGave > 0) {
+          await save('txs', {
+            id: uid('tx'),
+            date: car.buyDate || todayISO(),
+            kind: 'in',
+            amount: partnerGave,
+            currency: car.buyCurrency,
+            rate: settings.usdRate,
+            account: 'cash',
+            category: 'partner_in',
+            title: `پشکی شەریک لە کڕینی ${car.brand} ${car.model}${partner ? ` — ${partner.name}` : ''}`,
+            carId: car.id,
+            partnerId: car.partnerId,
+            note: `${pct}٪ لە نرخی کڕین`,
+            createdAt: now + 1,
+            createdBy: user?.uid,
+          })
+        }
       }
       await log(editing ? 'دەستکاری ئۆتۆمبێل' : 'تۆمارکردنی ئۆتۆمبێل', 'cars', car.id, `${car.brand} ${car.model} — ${car.vin}`)
       say(editing ? 'زانیارییەکان نوێکرانەوە' : 'ئۆتۆمبێلەکە تۆمارکرا')
@@ -328,8 +387,21 @@ export default function CarForm() {
         {/* ---------- دۆخ ---------- */}
         <Section icon={<Gauge size={17} />} title="دۆخی ئێستا">
           <div className="grid sm:grid-cols-2 gap-4">
-            <Field label="کیلۆمەتر" hint="بە کیلۆمەتر">
-              <MoneyInput value={c.km} onChange={(n) => set('km', n)} placeholder="0" />
+            <Field
+              label="ژمێرەری ڕێگا — کیلۆمەتر / مایل"
+              className="sm:col-span-2"
+              hint="هەردوو خانەکە پێکەوە دەگۆڕێن؛ ئەوەی لەسەر ئۆتۆمبێلەکەیە بنووسە"
+            >
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <MoneyInput value={Math.round(c.km || 0)} onChange={(n) => setC((p) => ({ ...p, km: Math.round(n), odoUnit: 'km' }))} placeholder="0" />
+                  <p className={`text-[11px] mt-1 text-center ${c.odoUnit === 'mi' ? 'text-muted' : 'text-brand font-medium'}`}>کیلۆمەتر (km)</p>
+                </div>
+                <div>
+                  <MoneyInput value={Math.round(kmToMiles(c.km || 0))} onChange={(n) => setC((p) => ({ ...p, km: Math.round(milesToKm(n)), odoUnit: 'mi' }))} placeholder="0" />
+                  <p className={`text-[11px] mt-1 text-center ${c.odoUnit === 'mi' ? 'text-brand font-medium' : 'text-muted'}`}>مایل (mi)</p>
+                </div>
+              </div>
             </Field>
             <Field label="ڕەگەز / وارد">
               <OptionPicker optKey="origin" base={ORIGINS} fromData={used.origins} value={c.origin || ''} onChange={(v) => set('origin', v)} />
@@ -356,30 +428,124 @@ export default function CarForm() {
         {/* ---------- پارە ---------- */}
         <Section icon={<Wallet size={17} />} title="کڕین و نرخ" sub="ئەم زانیارییانە تەنها بۆ خاوەن و ژمێریار دەردەکەون">
           <div className="space-y-4">
-            <Field label="خاوەندارێتی">
+            <Field
+              label="خاوەندارێتی"
+              hint={
+                c.ownership === 'partnership'
+                  ? 'بە سەرمایەی هاوبەش کڕدراوە — شەریک هەم لە تێچوو هەم لە قازانج بەشدارە'
+                  : c.ownership === 'consignment'
+                    ? 'ئەمانەت — هیچ پارەیەکی لەسەر نادرێت، تەنها ڕێژەیەک لە قازانج بۆ خاوەنەکەیە'
+                    : ''
+              }
+            >
               <Segmented
                 value={c.ownership}
-                onChange={(v) => set('ownership', v)}
+                onChange={(v) =>
+                  setC((p) => ({
+                    ...p,
+                    ownership: v,
+                    partnerId: v === 'owned' ? undefined : p.partnerId,
+                    partnerPct: v === 'owned' ? undefined : (p.partnerPct ?? 50),
+                  }))
+                }
                 options={[
                   { v: 'owned', label: 'موڵکی پێشانگا' },
-                  { v: 'consignment', label: 'ئەمانەت / شەریکی' },
+                  { v: 'partnership', label: 'شەریکی' },
+                  { v: 'consignment', label: 'ئەمانەت' },
                 ]}
               />
             </Field>
 
-            {c.ownership === 'consignment' && (
-              <div className="grid sm:grid-cols-2 gap-4">
-                <Field label="شەریک / خاوەنی ئۆتۆمبێل">
-                  <Picker
-                    value={partners.find((p) => p.id === c.partnerId)?.name || ''}
-                    onChange={(v) => set('partnerId', partners.find((p) => p.name === v)?.id)}
-                    options={partners.map((p) => p.name)}
-                    placeholder={partners.length ? 'شەریک هەڵبژێرە' : 'سەرەتا شەریک زیاد بکە'}
-                  />
-                </Field>
-                <Field label="ڕێژەی شەریک (%)">
-                  <MoneyInput value={c.partnerPct || 0} onChange={(n) => set('partnerPct', n)} placeholder="50" />
-                </Field>
+            {c.ownership !== 'owned' && (
+              <div className="rounded-2xl border border-line bg-surface2/50 p-3.5 sm:p-4 space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <Field label="شەریک / خاوەنی ئۆتۆمبێل *" hint={partners.length ? '' : 'هیچ شەریکێک تۆمار نەکراوە'}>
+                    <div className="flex gap-2">
+                      <div className="grow min-w-0">
+                        <Picker
+                          value={partner?.name || ''}
+                          onChange={(v) => set('partnerId', partners.find((p) => p.name === v)?.id)}
+                          options={partners.map((p) => p.name)}
+                          placeholder={partners.length ? 'شەریک هەڵبژێرە' : 'شەریک زیاد بکە'}
+                        />
+                      </div>
+                      {can('settings.edit') && (
+                        <button
+                          type="button"
+                          onClick={() => setNewPartner({ name: '', phone: '' })}
+                          className="btn-ghost shrink-0 !px-3"
+                          title="شەریکی نوێ زیاد بکە"
+                        >
+                          <UserPlus size={17} />
+                        </button>
+                      )}
+                    </div>
+                  </Field>
+                  <Field label="ڕێژەی شەریک (%)" hint="نموونە: ٥٠ بۆ ٥٠ بە ٥٠">
+                    <MoneyInput
+                      value={c.partnerPct ?? 50}
+                      onChange={(n) => set('partnerPct', Math.min(100, Math.max(0, n)))}
+                      placeholder="50"
+                    />
+                  </Field>
+                </div>
+
+                {c.ownership === 'partnership' && !editing && (
+                  <>
+                    <Field label="کێ پشکی شەریکی لە نرخی کڕیندا داوە؟">
+                      <Segmented
+                        value={fund}
+                        onChange={setFund}
+                        size="sm"
+                        options={[
+                          { v: 'partner' as const, label: 'شەریک خۆی' },
+                          { v: 'showroom' as const, label: 'ئێمە بۆمان دا' },
+                          { v: 'partial' as const, label: 'بەشێکی' },
+                        ]}
+                      />
+                    </Field>
+                    {fund === 'partial' && (
+                      <Field label="ئەوەی شەریک خۆی داویەتی" hint={`زۆرترین: ${money(shareOfBuy, c.buyCurrency)}`}>
+                        <MoneyInput value={partnerPart} onChange={(n) => setPartnerPart(Math.max(0, n))} placeholder="0" />
+                      </Field>
+                    )}
+                    <div className="rounded-xl border border-line bg-surface p-3 space-y-1.5 text-[13px]">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-muted">پشکی شەریک لە نرخی کڕین ({pct}٪)</span>
+                        <b className="num">{money(shareOfBuy, c.buyCurrency)}</b>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-muted">شەریک داویەتی</span>
+                        <b className="num text-ok">{money(partnerGave, c.buyCurrency)}</b>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-muted">قەرز لەسەر شەریک</span>
+                        <b className={`num ${partnerDebt > 0 ? 'text-warn' : ''}`}>{money(partnerDebt, c.buyCurrency)}</b>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-line">
+                        <span className="text-muted">لە سندوقی پێشانگاوە دەچێت</span>
+                        <b className="num text-bad">{money(fromCashbox, c.buyCurrency)}</b>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {c.ownership === 'partnership' && editing && recorded && (
+                  <div className="rounded-xl border border-line bg-surface p-3 space-y-1.5 text-[13px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted">شەریک داویەتی (تۆمارکراو)</span>
+                      <b className="num text-ok">{money(recorded.funded, 'USD')}</b>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted">قەرزی ماوە لەسەر شەریک</span>
+                      <b className={`num ${recorded.debt > 0 ? 'text-warn' : ''}`}>{money(recorded.debt, 'USD')}</b>
+                    </div>
+                    <p className="text-[12px] text-muted pt-1.5 border-t border-line flex items-center gap-1.5">
+                      <Handshake size={13} className="shrink-0" />
+                      وەرگرتنی پارە لە شەریک لە پەڕەی «شەریکەکان» تۆمار دەکرێت
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -436,6 +602,32 @@ export default function CarForm() {
           </button>
         </div>
       </div>
+
+      <Sheet
+        open={!!newPartner}
+        onClose={() => setNewPartner(null)}
+        title="شەریکی نوێ"
+        footer={
+          <>
+            <button className="btn-ghost" onClick={() => setNewPartner(null)}>پاشگەزبوونەوە</button>
+            <button className="btn-brand" onClick={addPartner} disabled={!newPartner?.name.trim()}>خەزنکردن</button>
+          </>
+        }
+      >
+        {newPartner && (
+          <div className="space-y-4">
+            <Field label="ناو *">
+              <input autoFocus value={newPartner.name} onChange={(e) => setNewPartner({ ...newPartner, name: e.target.value })} className="field" />
+            </Field>
+            <Field label="ژمارەی تەلەفۆن">
+              <input dir="ltr" value={newPartner.phone} onChange={(e) => setNewPartner({ ...newPartner, phone: e.target.value })} className="field text-start num" placeholder="0750..." />
+            </Field>
+            <p className="text-xs text-muted leading-6">
+              ئەم شەریکە لە پەڕەی «شەریکەکان»یش تۆمار دەبێت و حساباتی خۆی دەبێت.
+            </p>
+          </div>
+        )}
+      </Sheet>
 
       {scan && (
         <VinScanner

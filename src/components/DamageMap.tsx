@@ -201,29 +201,34 @@ export function DamageMap({
   )
 }
 
-/** پوختەیەکی بچووک بۆ لیستەکان */
+/** پوختەیەکی بچووک بۆ لیستەکان — هەر دۆخێک بە ناوی خۆیەوە */
 export function BodySummary({ body }: { body: Record<string, PartState> }) {
-  const n = Object.keys(body || {}).length
+  const v = body || {}
+  const n = Object.keys(v).length
   if (!n) return <span className="chip bg-ok/12 text-ok border-ok/30">بێ بۆیاغ</span>
-  const painted = Object.values(body).filter((s) => s === 'painted' || s === 'putty').length
-  const hit = Object.values(body).filter((s) => s === 'dented' || s === 'replaced').length
+
+  const count = (...states: PartState[]) => Object.values(v).filter((s) => states.includes(s)).length
+  /* گۆڕاو و ناوگرتن دوو شتی جیاوازن — هەریەکە بە ناوی خۆی پیشان دەدرێت */
+  const groups: { key: PartState; label: string; n: number }[] = [
+    { key: 'replaced', label: PART_STATES.replaced.short, n: count('replaced') },
+    { key: 'dented', label: PART_STATES.dented.short, n: count('dented') },
+    { key: 'painted', label: PART_STATES.painted.short, n: count('painted', 'putty') },
+    { key: 'scratched', label: PART_STATES.scratched.short, n: count('scratched') },
+  ]
+
   return (
-    <span className="flex gap-1.5 flex-wrap">
-      {painted > 0 && (
-        <span className="chip bg-warn/12 text-warn border-warn/30">
-          <span className="num">{painted}</span> بۆیاغ
-        </span>
-      )}
-      {hit > 0 && (
-        <span className="chip bg-bad/12 text-bad border-bad/30">
-          <span className="num">{hit}</span> ناوگرتن
-        </span>
-      )}
-      {!painted && !hit && (
-        <span className="chip bg-info/12 text-info border-info/30">
-          <span className="num">{n}</span> تێبینی
-        </span>
-      )}
+    <span className="flex gap-1.5 flex-wrap justify-end">
+      {groups
+        .filter((g) => g.n > 0)
+        .map((g) => (
+          <span
+            key={g.key}
+            className="chip"
+            style={{ borderColor: PART_STATES[g.key].hex + '55', color: PART_STATES[g.key].hex, background: PART_STATES[g.key].hex + '18' }}
+          >
+            <span className="num">{g.n}</span> {g.label}
+          </span>
+        ))}
     </span>
   )
 }

@@ -40,10 +40,20 @@ export interface Car {
   drive?: string
   origin?: string
   km: number
+  /**
+   * یەکەی سەرەکیی ژمێرەری ڕێگا — `km` بنەڕەتە.
+   * هەمیشە بە کیلۆمەتر خەزن دەکرێت؛ ئەمە تەنها دیاری دەکات بە چی پیشان بدرێت.
+   */
+  odoUnit?: 'km' | 'mi'
   keys?: number
   status: 'available' | 'reserved' | 'sold' | 'workshop'
-  ownership: 'owned' | 'consignment'
+  /**
+   * `owned` = موڵکی پێشانگا · `partnership` = بە شەریکی کڕدراوە (سەرمایەی هاوبەش)
+   * `consignment` = ئەمانەت (پارەی لەسەر نەداوە، تەنها بۆی دەفرۆشین)
+   */
+  ownership: 'owned' | 'partnership' | 'consignment'
   partnerId?: string
+  /** ڕێژەی شەریک بە لەسەدا — هەم لە تێچوو هەم لە قازانج */
   partnerPct?: number
   buyPrice: number
   buyCurrency: Currency
@@ -150,6 +160,7 @@ export type TxCategory =
   | 'withdraw'
   | 'commission'
   | 'partner'
+  | 'partner_in'
   | 'debt_in'
   | 'debt_out'
   | 'exchange_transfer'

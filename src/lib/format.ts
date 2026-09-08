@@ -51,6 +51,13 @@ export function sumIn(list: { amount: number; currency: Currency; rate?: number 
   return list.reduce((s, x) => s + convert(x.amount, x.currency, to, x.rate || fallbackRate), 0)
 }
 
+/* ================= ژمێرەری ڕێگا ================= */
+export const KM_PER_MILE = 1.609344
+/** کیلۆمەتر → مایل */
+export const kmToMiles = (km: number) => (km || 0) / KM_PER_MILE
+/** مایل → کیلۆمەتر */
+export const milesToKm = (mi: number) => (mi || 0) * KM_PER_MILE
+
 /* ================= VIN ================= */
 export const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/i
 
