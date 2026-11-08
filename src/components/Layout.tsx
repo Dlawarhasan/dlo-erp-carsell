@@ -249,7 +249,7 @@ function DloPromo() {
         dir="rtl"
       >
         <img src={dloLogo} alt="DLO.IT" className="h-6 w-auto object-contain" />
-        <span className="num font-medium text-ink" dir="ltr">07700581716</span>
+        <span className="num font-medium text-ink" dir="ltr">07803877515</span>
         <span>بۆ دروستکردنی ئەپلیکەیشن و سیستەمی داتابەیس پەیوەندیم پێوە بکە.</span>
       </a>
     </footer>

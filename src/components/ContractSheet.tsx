@@ -472,7 +472,7 @@ export function ContractSheet({ c, s, lang = 'ku' }: { c: Contract; s: Settings;
       <footer className="contract-footer">
         <a href="https://www.instagram.com/dlo_.it/" target="_blank" rel="noreferrer" className="contract-promo-link">
           <img src={dloLogo} alt="DLO.IT" className="contract-dlo-logo" />
-          <b className="num">07700581716</b>
+          <b className="num">07803877515</b>
           <span>{lang === 'ku' ? 'بۆ دروستکردنی ئەپلیکەیشن و سیستەمی داتابەیس پەیوەندیم پێوە بکە.' : 'لتصميم التطبيقات وأنظمة قواعد البيانات تواصل معي.'}</span>
         </a>
       </footer>

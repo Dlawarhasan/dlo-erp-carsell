@@ -236,7 +236,7 @@ function sheet(c: Contract, s: Settings, lang: Lang) {
       : ''
   }
 
-  <p class="dlo-ad"><a href="https://www.instagram.com/dlo_.it/" target="_blank" rel="noreferrer"><img src="${dloLogo}" alt="DLO.IT"><span class="num">07700581716</span><span>${lang === 'ku' ? 'بۆ دروستکردنی ئەپلیکەیشن و سیستەمی داتابەیس پەیوەندیم پێوە بکە.' : 'لتصميم التطبيقات وأنظمة قواعد البيانات تواصل معي.'}</span></a></p>
+  <p class="dlo-ad"><a href="https://www.instagram.com/dlo_.it/" target="_blank" rel="noreferrer"><img src="${dloLogo}" alt="DLO.IT"><span class="num">07803877515</span><span>${lang === 'ku' ? 'بۆ دروستکردنی ئەپلیکەیشن و سیستەمی داتابەیس پەیوەندیم پێوە بکە.' : 'لتصميم التطبيقات وأنظمة قواعد البيانات تواصل معي.'}</span></a></p>
 </div>`
 }
 
